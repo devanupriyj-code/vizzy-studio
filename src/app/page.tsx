@@ -92,9 +92,10 @@ export default function VizzyStudioPage() {
     };
   };
 
-  const refreshSavedList = async () => {
-    const all = await listSavedProjects();
+  const refreshSavedList = async (emailOverride?: string | null) => {
+    const all = await listSavedProjects(emailOverride ?? userEmail);
     setSavedProjects(all);
+    return all;
   };
 
   const pushVizzy = (text: string, sceneImagePreview?: string, suggestedActions?: string[]) => {
@@ -141,41 +142,51 @@ export default function VizzyStudioPage() {
     else setIsAuthOpen(true);
 
     (async () => {
-      const saved = await loadSavedProject(initialProject);
-      const proj = hydrateProject(saved);
-      setProject(proj);
-      await refreshSavedList();
-      const active = proj.beats[proj.activeBeatIndex] || proj.beats[0];
-      setMessages([
-        {
-          id: "welcome",
-          sender: "vizzy",
-          text: `${proj.title} — Scene ${proj.activeBeatIndex + 1}: ${active?.title}\n\n${active?.userPromptDescription || ""}`,
-          timestamp: now(),
-          sceneImagePreview: active?.currentImageUrl || undefined,
-          suggestedActions: sceneActions(proj.activeBeatIndex, proj.beats.length)
+      const saved = await loadSavedProject(savedUser);
+      await refreshSavedList(savedUser);
+      if (saved) {
+        const proj = hydrateProject(saved);
+        setProject(proj);
+        const active = proj.beats[proj.activeBeatIndex] || proj.beats[0];
+        setMessages([
+          {
+            id: "welcome",
+            sender: "vizzy",
+            text: `${proj.title} — Scene ${proj.activeBeatIndex + 1}: ${active?.title}\n\n${active?.userPromptDescription || ""}`,
+            timestamp: now(),
+            sceneImagePreview: active?.currentImageUrl || undefined,
+            suggestedActions: sceneActions(proj.activeBeatIndex, proj.beats.length)
+          }
+        ]);
+      } else {
+        setProject(initialProject);
+        setMessages([]);
+        if (savedUser) {
+          setIsProjectHubOpen(true);
         }
-      ]);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounced auto-save
+  // Debounced auto-save (only save real user projects, never the placeholder)
   useEffect(() => {
+    if (!project || project.id === "proj-overlord-1944") return;
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
-      const res = await saveProject(project);
+      const res = await saveProject(project, userEmail);
       setSaveStatus(res.cloud ? "saved_cloud" : "saved_local");
-      await refreshSavedList();
+      await refreshSavedList(userEmail);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [project]);
+  }, [project, userEmail]);
 
   const handleManualSave = async () => {
+    if (!project || project.id === "proj-overlord-1944") return;
     setSaveStatus("saving");
-    const res = await saveProject(project);
+    const res = await saveProject(project, userEmail);
     setSaveStatus(res.cloud ? "saved_cloud" : "saved_local");
-    await refreshSavedList();
+    await refreshSavedList(userEmail);
   };
 
   const handleSelectProject = (selected: Project) => {
@@ -201,7 +212,7 @@ export default function VizzyStudioPage() {
         ? project.title
         : savedProjects.find((p) => p.id === projectId)?.title || "Project";
 
-    const { remainingProjects } = await deleteProject(projectId);
+    const { remainingProjects } = await deleteProject(projectId, userEmail);
     setSavedProjects(remainingProjects);
 
     if (projectId === project.id) {
@@ -220,23 +231,24 @@ export default function VizzyStudioPage() {
           }
         ]);
       } else {
+        setProject(initialProject);
         setIsProjectHubOpen(false);
         setIsWizardOpen(true);
-        setMessages([
-          {
-            id: `del-${Date.now()}`,
-            sender: "vizzy",
-            text: `Deleted ${deletedTitle}.`,
-            timestamp: now()
-          }
-        ]);
+        setMessages([]);
       }
     }
   };
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = async (email: string) => {
     setUserEmail(email);
     localStorage.setItem("vizzy_user_email", email);
+    const list = await refreshSavedList(email);
+    if (list.length > 0) {
+      setProject(hydrateProject(list[0]));
+    } else {
+      setProject(initialProject);
+      setMessages([]);
+    }
     setIsAuthOpen(false);
     setIsProjectHubOpen(true);
   };
@@ -244,6 +256,9 @@ export default function VizzyStudioPage() {
   const handleLogout = () => {
     setUserEmail(null);
     localStorage.removeItem("vizzy_user_email");
+    setProject(initialProject);
+    setSavedProjects([]);
+    setMessages([]);
     setIsProjectHubOpen(false);
     setIsAuthOpen(true);
   };

@@ -33,8 +33,9 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
 
   if (!isOpen) return null;
 
+  const hasActiveUserProject = currentProject.id !== "proj-overlord-1944";
   const generated = currentProject.beats.filter((b) => b.currentImageUrl).length;
-  const otherProjects = savedProjects.filter((p) => p.id !== currentProject.id);
+  const otherProjects = savedProjects.filter((p) => p.id !== currentProject.id && p.id !== "proj-overlord-1944");
 
   const handleDeleteClick = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
@@ -63,16 +64,18 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
             >
               Sign out
             </button>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 flex items-center justify-center cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {hasActiveUserProject && (
+              <button
+                onClick={onClose}
+                className="w-7 h-7 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-5">
+        <div className={`grid grid-cols-1 ${hasActiveUserProject ? "md:grid-cols-2" : ""} gap-4 pt-5`}>
           {/* Create New Storyboard */}
           <div
             onClick={onCreateNew}
@@ -90,56 +93,58 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
             <span className="text-xs font-medium text-zinc-300 group-hover:text-white mt-4">Create project →</span>
           </div>
 
-          {/* Continue current */}
-          <div
-            onClick={onResumeCurrent}
-            className="group p-5 rounded-lg border border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 transition-colors cursor-pointer flex flex-col justify-between min-h-[180px]"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
-                  Current
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-zinc-500 font-mono">
-                    {generated}/{currentProject.beats.length} scenes
+          {/* Continue current (only shown if user actually created a project) */}
+          {hasActiveUserProject && (
+            <div
+              onClick={onResumeCurrent}
+              className="group p-5 rounded-lg border border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 transition-colors cursor-pointer flex flex-col justify-between min-h-[180px]"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
+                    Current
                   </span>
-                  <button
-                    onClick={(e) => handleDeleteClick(e, currentProject.id)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                      confirmDeleteId === currentProject.id
-                        ? "bg-red-600 hover:bg-red-500 text-white"
-                        : "bg-zinc-900 hover:bg-red-950/70 text-zinc-400 hover:text-red-300 border border-zinc-800"
-                    }`}
-                    title="Delete this project"
-                  >
-                    {confirmDeleteId === currentProject.id ? (
-                      <>
-                        <Check className="w-3 h-3" />
-                        <span>Confirm</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="w-3 h-3" />
-                        <span>Delete</span>
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-zinc-500 font-mono">
+                      {generated}/{currentProject.beats.length} scenes
+                    </span>
+                    <button
+                      onClick={(e) => handleDeleteClick(e, currentProject.id)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                        confirmDeleteId === currentProject.id
+                          ? "bg-red-600 hover:bg-red-500 text-white"
+                          : "bg-zinc-900 hover:bg-red-950/70 text-zinc-400 hover:text-red-300 border border-zinc-800"
+                      }`}
+                      title="Delete this project"
+                    >
+                      {confirmDeleteId === currentProject.id ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          <span>Confirm</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-zinc-100">
+                  {currentProject.title}
+                </h3>
+                <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{currentProject.synopsis}</p>
+                <div className="mt-3 flex items-center gap-4 text-[11px] text-zinc-500">
+                  <span className="truncate max-w-[160px]">{currentProject.styleBible.artStyle}</span>
+                  <span>{currentProject.characters.length} characters</span>
                 </div>
               </div>
-              <h3 className="text-sm font-semibold text-zinc-100">
-                {currentProject.title}
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{currentProject.synopsis}</p>
-              <div className="mt-3 flex items-center gap-4 text-[11px] text-zinc-500">
-                <span className="truncate max-w-[160px]">{currentProject.styleBible.artStyle}</span>
-                <span>{currentProject.characters.length} characters</span>
+              <div className="mt-4 flex items-center justify-end gap-1.5 text-xs font-medium text-zinc-300 group-hover:text-white">
+                Open <ArrowRight className="w-3.5 h-3.5" />
               </div>
             </div>
-            <div className="mt-4 flex items-center justify-end gap-1.5 text-xs font-medium text-zinc-300 group-hover:text-white">
-              Open <ArrowRight className="w-3.5 h-3.5" />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Other Saved Projects List */}

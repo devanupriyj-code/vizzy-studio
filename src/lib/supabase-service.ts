@@ -1,25 +1,38 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { Project, StoryBeat } from "@/types";
 
-const LOCAL_STORAGE_KEY = "vizzy_active_project";
-const LOCAL_PROJECTS_LIST_KEY = "vizzy_projects_list";
+const DEFAULT_DEMO_ID = "proj-overlord-1944";
 
-function getLocalProjectsList(): Project[] {
+function getUserKey(baseKey: string, userEmail?: string | null): string {
+  const email = (userEmail || (typeof window !== "undefined" ? localStorage.getItem("vizzy_user_email") : "") || "guest")
+    .trim()
+    .toLowerCase();
+  return `${baseKey}::${email}`;
+}
+
+function getLocalProjectsList(userEmail?: string | null): Project[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(LOCAL_PROJECTS_LIST_KEY);
+    // Clean up legacy shared keys that held the hardcoded default project
+    localStorage.removeItem("vizzy_active_project");
+    localStorage.removeItem("vizzy_projects_list");
+
+    const raw = localStorage.getItem(getUserKey("vizzy_projects_list", userEmail));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((p) => p && p.id && p.id !== DEFAULT_DEMO_ID)
+      : [];
   } catch {
     return [];
   }
 }
 
-function setLocalProjectsList(projects: Project[]) {
+function setLocalProjectsList(projects: Project[], userEmail?: string | null) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(LOCAL_PROJECTS_LIST_KEY, JSON.stringify(projects));
+    const clean = projects.filter((p) => p && p.id && p.id !== DEFAULT_DEMO_ID);
+    localStorage.setItem(getUserKey("vizzy_projects_list", userEmail), JSON.stringify(clean));
   } catch (e) {
     console.warn("Could not save projects list to localStorage:", e);
   }
@@ -27,23 +40,28 @@ function setLocalProjectsList(projects: Project[]) {
 
 /**
  * Saves project either to Supabase (if tables exist) or local storage as fallback.
+ * Never saves the internal fallback placeholder project ("proj-overlord-1944").
  */
-export async function saveProject(project: Project): Promise<{ success: boolean; cloud: boolean; error?: string }> {
-  // Always save locally first as instant backup
+export async function saveProject(
+  project: Project,
+  userEmail?: string | null
+): Promise<{ success: boolean; cloud: boolean; error?: string }> {
+  if (!project || !project.id || project.id === DEFAULT_DEMO_ID) {
+    return { success: false, cloud: false };
+  }
+
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(project));
-      const existing = getLocalProjectsList().filter((p) => p.id !== project.id);
-      setLocalProjectsList([project, ...existing].slice(0, 25));
+      localStorage.setItem(getUserKey("vizzy_active_project", userEmail), JSON.stringify(project));
+      const existing = getLocalProjectsList(userEmail).filter((p) => p.id !== project.id);
+      setLocalProjectsList([project, ...existing].slice(0, 25), userEmail);
     } catch (e) {
       console.warn("Could not save to localStorage:", e);
     }
   }
 
-  // Attempt Supabase cloud save if configured
   if (supabase && isSupabaseConfigured) {
     try {
-      // 1. Upsert project
       const { error: projError } = await supabase.from("projects").upsert(
         {
           id: project.id,
@@ -59,11 +77,9 @@ export async function saveProject(project: Project): Promise<{ success: boolean;
       );
 
       if (projError) {
-        // Table may not have been created in SQL editor yet
         return { success: true, cloud: false, error: projError.message };
       }
 
-      // 2. Upsert beats
       for (const beat of project.beats) {
         await supabase.from("story_beats").upsert(
           {
@@ -95,71 +111,35 @@ export async function saveProject(project: Project): Promise<{ success: boolean;
 }
 
 /**
- * Returns all saved projects from localStorage and Supabase.
+ * Returns all saved projects for the current user.
  */
-export async function listSavedProjects(): Promise<Project[]> {
+export async function listSavedProjects(userEmail?: string | null): Promise<Project[]> {
   const byId = new Map<string, Project>();
 
   if (typeof window !== "undefined") {
-    for (const p of getLocalProjectsList()) {
-      if (p && p.id) byId.set(p.id, p);
+    for (const p of getLocalProjectsList(userEmail)) {
+      if (p && p.id && p.id !== DEFAULT_DEMO_ID) byId.set(p.id, p);
     }
     try {
-      const activeRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const activeRaw = localStorage.getItem(getUserKey("vizzy_active_project", userEmail));
       if (activeRaw) {
         const active = JSON.parse(activeRaw);
-        if (active && active.id) byId.set(active.id, active);
+        if (active && active.id && active.id !== DEFAULT_DEMO_ID) {
+          byId.set(active.id, active);
+        }
       }
     } catch {
       // ignore
     }
   }
 
+  // Also purge any accidentally saved default demo from Supabase
   if (supabase && isSupabaseConfigured) {
     try {
-      const { data: projRows } = await supabase
-        .from("projects")
-        .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(20);
-
-      if (Array.isArray(projRows)) {
-        for (const row of projRows) {
-          if (byId.has(row.id)) continue;
-          const { data: beatsData } = await supabase
-            .from("story_beats")
-            .select("*")
-            .eq("project_id", row.id)
-            .order("sequence_index", { ascending: true });
-
-          const mappedBeats: StoryBeat[] = (beatsData || []).map((b: any) => ({
-            id: b.id,
-            sequenceIndex: b.sequence_index,
-            title: b.title,
-            userPromptDescription: b.user_prompt_description,
-            synthesizedPrompt: b.synthesized_prompt,
-            currentImageUrl: b.selected_image_url || "",
-            versionHistory: b.candidates || [],
-            captions: b.captions || [],
-            subtitleText: b.subtitle_text,
-            durationSeconds: Number(b.duration_seconds) || 3.5,
-            isLocked: Boolean(b.is_locked)
-          }));
-
-          byId.set(row.id, {
-            id: row.id,
-            title: row.title,
-            synopsis: row.synopsis,
-            styleBible: row.style_bible,
-            characters: row.characters || [],
-            beats: mappedBeats,
-            activeBeatIndex: row.active_beat_index ?? 0,
-            displayMode: row.display_mode || "comic"
-          });
-        }
-      }
+      await supabase.from("story_beats").delete().eq("project_id", DEFAULT_DEMO_ID);
+      await supabase.from("projects").delete().eq("id", DEFAULT_DEMO_ID);
     } catch {
-      // ignore cloud errors
+      // ignore
     }
   }
 
@@ -169,22 +149,26 @@ export async function listSavedProjects(): Promise<Project[]> {
 /**
  * Deletes a project by ID from both localStorage and Supabase.
  */
-export async function deleteProject(projectId: string): Promise<{ success: boolean; remainingProjects: Project[] }> {
+export async function deleteProject(
+  projectId: string,
+  userEmail?: string | null
+): Promise<{ success: boolean; remainingProjects: Project[] }> {
   let remaining: Project[] = [];
 
   if (typeof window !== "undefined") {
     try {
-      remaining = getLocalProjectsList().filter((p) => p.id !== projectId);
-      setLocalProjectsList(remaining);
+      remaining = getLocalProjectsList(userEmail).filter((p) => p.id !== projectId);
+      setLocalProjectsList(remaining, userEmail);
 
-      const activeRaw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const activeKey = getUserKey("vizzy_active_project", userEmail);
+      const activeRaw = localStorage.getItem(activeKey);
       if (activeRaw) {
         const active = JSON.parse(activeRaw);
         if (active?.id === projectId) {
           if (remaining.length > 0) {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(remaining[0]));
+            localStorage.setItem(activeKey, JSON.stringify(remaining[0]));
           } else {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            localStorage.removeItem(activeKey);
           }
         }
       }
@@ -206,86 +190,9 @@ export async function deleteProject(projectId: string): Promise<{ success: boole
 }
 
 /**
- * Loads project from Supabase or localStorage.
+ * Loads the user's most recent saved project, or returns null if the user has no projects yet.
  */
-export async function loadSavedProject(fallback: Project): Promise<Project> {
-  // Try Supabase first
-  if (supabase && isSupabaseConfigured) {
-    try {
-      const { data: projData, error: projError } = await supabase
-        .from("projects")
-        .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!projError && projData) {
-        // Load beats for this project
-        const { data: beatsData } = await supabase
-          .from("story_beats")
-          .select("*")
-          .eq("project_id", projData.id)
-          .order("sequence_index", { ascending: true });
-
-        const mappedBeats: StoryBeat[] = (beatsData || []).map((b: any) => ({
-          id: b.id,
-          sequenceIndex: b.sequence_index,
-          title: b.title,
-          user_prompt_description: b.user_prompt_description,
-          userPromptDescription: b.user_prompt_description,
-          synthesizedPrompt: b.synthesized_prompt,
-          currentImageUrl: b.selected_image_url || fallback.beats[0]?.currentImageUrl,
-          versionHistory: b.candidates || [],
-          captions: b.captions || [],
-          subtitleText: b.subtitle_text,
-          durationSeconds: Number(b.duration_seconds) || 3.5,
-          isLocked: Boolean(b.is_locked)
-        }));
-
-        return {
-          id: projData.id,
-          title: projData.title,
-          synopsis: projData.synopsis,
-          styleBible: projData.style_bible,
-          characters: projData.characters || [],
-          beats: mappedBeats.length > 0 ? mappedBeats : fallback.beats,
-          activeBeatIndex: projData.active_beat_index ?? 0,
-          displayMode: projData.display_mode || "comic"
-        };
-      }
-    } catch (e) {
-      console.warn("Supabase load fell back to localStorage:", e);
-    }
-  }
-
-  // Fallback to localStorage with migration safeguard
-  if (typeof window !== "undefined") {
-    try {
-      const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (parsed && Array.isArray(parsed.beats)) {
-          parsed.beats = parsed.beats.map((b: any, idx: number) => ({
-            ...b,
-            currentImageUrl: b.currentImageUrl || b.selectedImageUrl || fallback.beats[idx]?.currentImageUrl || fallback.beats[0]?.currentImageUrl,
-            versionHistory: Array.isArray(b.versionHistory) && b.versionHistory.length > 0
-              ? b.versionHistory
-              : [
-                  {
-                    id: `v-init-${b.id || idx}`,
-                    imageUrl: b.currentImageUrl || b.selectedImageUrl || fallback.beats[idx]?.currentImageUrl,
-                    promptUsed: "Initial scene take",
-                    createdAt: "Initial"
-                  }
-                ]
-          }));
-        }
-        return parsed;
-      }
-    } catch (e) {
-      console.warn("Could not read from localStorage:", e);
-    }
-  }
-
-  return fallback;
+export async function loadSavedProject(userEmail?: string | null): Promise<Project | null> {
+  const saved = await listSavedProjects(userEmail);
+  return saved.length > 0 ? saved[0] : null;
 }
