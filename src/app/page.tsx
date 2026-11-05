@@ -14,6 +14,7 @@ import { AuthModal } from "@/components/AuthModal";
 import { ProjectHubModal } from "@/components/ProjectHubModal";
 import { SettingsModal } from "@/components/SettingsModal";
 import { StoryWizard } from "@/components/StoryWizard";
+import { SweetBunny } from "@/components/SweetBunny";
 import { generateSingleSceneImage } from "@/lib/image-gen";
 import { renderCharacterPortraitDataUri } from "@/lib/layer-compositor";
 import { saveProject, loadSavedProject, listSavedProjects, deleteProject, isPlaceholderProject } from "@/lib/supabase-service";
@@ -778,6 +779,12 @@ export default function VizzyStudioPage() {
       />
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+
+      <SweetBunny
+        currentProjectTitle={!isPlaceholderProject(project) ? project.title : undefined}
+        activeSceneTitle={!isPlaceholderProject(project) ? currentBeat.title : undefined}
+        isModalOpen={isProjectHubOpen || isWizardOpen || isLockerOpen || isSlideshowOpen || isComicPageOpen || isAuthOpen || isSettingsOpen}
+      />
     </div>
   );
 }
