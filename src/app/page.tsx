@@ -16,7 +16,21 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { StoryWizard } from "@/components/StoryWizard";
 import { generateSingleSceneImage } from "@/lib/image-gen";
 import { renderCharacterPortraitDataUri } from "@/lib/layer-compositor";
-import { saveProject, loadSavedProject, listSavedProjects, deleteProject } from "@/lib/supabase-service";
+import { saveProject, loadSavedProject, listSavedProjects, deleteProject, isPlaceholderProject } from "@/lib/supabase-service";
+
+const EMPTY_BEAT: StoryBeat = {
+  id: "beat-empty",
+  sequenceIndex: 1,
+  title: "Scene 1",
+  userPromptDescription: "",
+  synthesizedPrompt: "",
+  currentImageUrl: "",
+  versionHistory: [],
+  captions: [],
+  subtitleText: "",
+  durationSeconds: 4,
+  isLocked: false
+};
 
 const now = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -171,7 +185,7 @@ export default function VizzyStudioPage() {
 
   // Debounced auto-save (only save real user projects, never the placeholder)
   useEffect(() => {
-    if (!project || project.id === "proj-overlord-1944") return;
+    if (isPlaceholderProject(project)) return;
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
       const res = await saveProject(project, userEmail);
@@ -182,7 +196,7 @@ export default function VizzyStudioPage() {
   }, [project, userEmail]);
 
   const handleManualSave = async () => {
-    if (!project || project.id === "proj-overlord-1944") return;
+    if (isPlaceholderProject(project)) return;
     setSaveStatus("saving");
     const res = await saveProject(project, userEmail);
     setSaveStatus(res.cloud ? "saved_cloud" : "saved_local");
@@ -263,7 +277,7 @@ export default function VizzyStudioPage() {
     setIsAuthOpen(true);
   };
 
-  const currentBeat = normalizeBeat(project.beats[project.activeBeatIndex] || project.beats[0]);
+  const currentBeat = normalizeBeat(project.beats[project.activeBeatIndex] || project.beats[0] || EMPTY_BEAT);
   const idx = project.activeBeatIndex;
   const total = project.beats.length;
 
@@ -640,39 +654,56 @@ export default function VizzyStudioPage() {
         userEmail={userEmail || undefined}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        <ChatPanel
-          messages={messages}
-          currentBeat={currentBeat}
-          onSendMessage={handleSendMessage}
-          onRerollCurrent={() => handleSendMessage("Re-render")}
-          onSelectVersion={handleSelectVersion}
-          isLoading={isLoading}
-        />
-        <CanvasStage
-          key={`${currentBeat.id}-${currentBeat.currentImageUrl}`}
-          currentBeat={currentBeat}
-          displayMode={project.displayMode}
-          aspectRatio={project.styleBible.aspectRatio}
-          artStyle={project.styleBible.artStyle}
-          onUpdateCaptions={(captions: CaptionOverlay[]) => updateCurrentBeat({ captions })}
-          onSelectVersionUrl={handleSelectVersion}
-          onToggleLockBeat={() => updateCurrentBeat({ isLocked: !currentBeat.isLocked })}
-          onQuickDirectLayer={handleQuickDirectLayer}
-          onAddEditedVersion={handleAddEditedVersion}
-        />
-      </div>
+      {!isPlaceholderProject(project) ? (
+        <>
+          <div className="flex-1 flex overflow-hidden">
+            <ChatPanel
+              messages={messages}
+              currentBeat={currentBeat}
+              onSendMessage={handleSendMessage}
+              onRerollCurrent={() => handleSendMessage("Re-render")}
+              onSelectVersion={handleSelectVersion}
+              isLoading={isLoading}
+            />
+            <CanvasStage
+              key={`${currentBeat.id}-${currentBeat.currentImageUrl}`}
+              currentBeat={currentBeat}
+              displayMode={project.displayMode}
+              aspectRatio={project.styleBible.aspectRatio}
+              artStyle={project.styleBible.artStyle}
+              onUpdateCaptions={(captions: CaptionOverlay[]) => updateCurrentBeat({ captions })}
+              onSelectVersionUrl={handleSelectVersion}
+              onToggleLockBeat={() => updateCurrentBeat({ isLocked: !currentBeat.isLocked })}
+              onQuickDirectLayer={handleQuickDirectLayer}
+              onAddEditedVersion={handleAddEditedVersion}
+            />
+          </div>
 
-      <Filmstrip
-        beats={project.beats.map(normalizeBeat)}
-        activeBeatIndex={project.activeBeatIndex}
-        artStyle={project.styleBible.artStyle}
-        onSelectBeat={(i) => goToScene(i)}
-        onAddNewBeat={handleAddNewBeat}
-        onDeleteBeat={handleDeleteBeat}
-        onDuplicateBeat={handleDuplicateBeat}
-        onMoveBeat={handleMoveBeat}
-      />
+          <Filmstrip
+            beats={project.beats.map(normalizeBeat)}
+            activeBeatIndex={project.activeBeatIndex}
+            artStyle={project.styleBible.artStyle}
+            onSelectBeat={(i) => goToScene(i)}
+            onAddNewBeat={handleAddNewBeat}
+            onDeleteBeat={handleDeleteBeat}
+            onDuplicateBeat={handleDuplicateBeat}
+            onMoveBeat={handleMoveBeat}
+          />
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center">
+          <p className="text-sm font-medium text-zinc-300">No storyboard open</p>
+          <p className="text-xs text-zinc-500 mt-1 mb-4">
+            Create a new storyboard to start generating scenes.
+          </p>
+          <button
+            onClick={() => setIsWizardOpen(true)}
+            className="px-4 py-2 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium cursor-pointer"
+          >
+            New Storyboard
+          </button>
+        </div>
+      )}
 
       <CharacterLockerModal
         isOpen={isLockerOpen}

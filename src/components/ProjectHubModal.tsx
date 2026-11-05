@@ -33,9 +33,22 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
 
   if (!isOpen) return null;
 
-  const hasActiveUserProject = currentProject.id !== "proj-overlord-1944";
+  const hasActiveUserProject =
+    Boolean(currentProject?.id) &&
+    currentProject.id !== "empty-project" &&
+    currentProject.id !== "proj-dday-1944" &&
+    currentProject.id !== "proj-overlord-1944" &&
+    currentProject.title !== "Operation Overlord: Red Beach" &&
+    currentProject.beats.length > 0;
   const generated = currentProject.beats.filter((b) => b.currentImageUrl).length;
-  const otherProjects = savedProjects.filter((p) => p.id !== currentProject.id && p.id !== "proj-overlord-1944");
+  const otherProjects = savedProjects.filter(
+    (p) =>
+      p.id !== currentProject.id &&
+      p.id !== "empty-project" &&
+      p.id !== "proj-dday-1944" &&
+      p.id !== "proj-overlord-1944" &&
+      p.title !== "Operation Overlord: Red Beach"
+  );
 
   const handleDeleteClick = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
