@@ -91,7 +91,9 @@ export default function VizzyStudioPage() {
       beats: (raw.beats || []).map((rawBeat, bIdx) => {
         const b = normalizeBeat(rawBeat);
         const directive = accumulatedEdits(b);
-        const gen = generateSingleSceneImage(b.userPromptDescription, raw.styleBible, refreshedChars, directive, bIdx);
+        const dialogueContext = (b.captions || []).filter((c) => c.text).map((c) => `${c.speaker || ""} ${c.text}`).join(" ");
+        const sceneContext = [b.userPromptDescription, dialogueContext].filter(Boolean).join(" ");
+        const gen = generateSingleSceneImage(sceneContext, raw.styleBible, refreshedChars, directive, bIdx);
         return {
           ...b,
           currentImageUrl: gen.imageUrl,
@@ -403,7 +405,12 @@ export default function VizzyStudioPage() {
     }
 
     const variationSeed = editText ? 0 : currentBeat.versionHistory.length;
-    const gen = generateSingleSceneImage(updatedDescription, project.styleBible, updatedCharacters, directive, idx, variationSeed);
+    const dialogueContext = updatedCaptions
+      .filter((c) => c.text)
+      .map((c) => `${c.speaker || ""} ${c.text}`)
+      .join(" ");
+    const sceneContext = [updatedDescription, dialogueContext].filter(Boolean).join(" ");
+    const gen = generateSingleSceneImage(sceneContext, project.styleBible, updatedCharacters, directive, idx, variationSeed);
     const version: SceneVersion = {
       id: `v-${Date.now()}`,
       imageUrl: gen.imageUrl,
@@ -576,8 +583,13 @@ export default function VizzyStudioPage() {
   /** Instant 0ms layer update when clicking any Comicgen / Storyboarder Director Dock pill. */
   const handleQuickDirectLayer = (directiveChip: string) => {
     const combinedDirective = accumulatedEdits(currentBeat, directiveChip);
+    const dialogueContext = currentBeat.captions
+      .filter((c) => c.text)
+      .map((c) => `${c.speaker || ""} ${c.text}`)
+      .join(" ");
+    const sceneContext = [currentBeat.userPromptDescription, dialogueContext].filter(Boolean).join(" ");
     const gen = generateSingleSceneImage(
-      currentBeat.userPromptDescription,
+      sceneContext,
       project.styleBible,
       project.characters,
       combinedDirective,
@@ -744,7 +756,12 @@ export default function VizzyStudioPage() {
               const b = normalizeBeat(rawBeat);
               if (!b.currentImageUrl || b.currentImageUrl.startsWith("data:image/svg")) {
                 const directive = accumulatedEdits(b);
-                const gen = generateSingleSceneImage(b.userPromptDescription, prev.styleBible, updatedChars, directive, bIdx);
+                const dialogueContext = (b.captions || [])
+                  .filter((c) => c.text)
+                  .map((c) => `${c.speaker || ""} ${c.text}`)
+                  .join(" ");
+                const sceneContext = [b.userPromptDescription, dialogueContext].filter(Boolean).join(" ");
+                const gen = generateSingleSceneImage(sceneContext, prev.styleBible, updatedChars, directive, bIdx);
                 return { ...b, currentImageUrl: gen.imageUrl, synthesizedPrompt: gen.promptUsed };
               }
               return b;

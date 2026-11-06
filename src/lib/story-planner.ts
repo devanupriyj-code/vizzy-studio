@@ -190,7 +190,9 @@ export function buildProjectFromPlan(
         yPercent: j === 0 ? 68 : 45
       });
     });
-    const composed = composeLayeredSceneDataUri(s.description, styleBible, chars, undefined, i);
+    const dialogueContext = s.dialogue.map((d) => `${d.speaker} ${d.text}`).join(" ");
+    const sceneContext = [s.description, dialogueContext].filter(Boolean).join(" ");
+    const composed = composeLayeredSceneDataUri(sceneContext, styleBible, chars, undefined, i);
     return {
       id: `beat-${now}-${i}`,
       sequenceIndex: i + 1,

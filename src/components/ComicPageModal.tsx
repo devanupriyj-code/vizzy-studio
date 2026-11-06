@@ -34,14 +34,18 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
     const panelsHtml = project.beats
       .map(
         (beat, i) => `
-      <div class="panel">
+      <div class="panel ${i % 5 === 0 ? "hero-panel" : ""}">
         <img src="${beat.currentImageUrl}" alt="Scene ${i + 1}" />
         ${
           showBubbles
             ? beat.captions
                 .map(
                   (c) => `
-          <div class="bubble ${c.type}" style="left:${c.xPercent}%;top:${c.yPercent}%;">
+          <div class="bubble ${c.type}" style="${
+                    c.type === "narration"
+                      ? `left:${Math.max(22, Math.min(78, c.xPercent))}%;top:10px;transform:translateX(-50%);`
+                      : `left:${Math.max(18, Math.min(82, c.xPercent))}%;top:${Math.max(24, Math.min(76, c.yPercent))}%;transform:translate(-50%,-50%);`
+                  }">
             ${c.speaker && c.type !== "narration" && c.type !== "sfx" ? `<div class="speaker">${c.speaker}:</div>` : ""}
             <div>${c.text}</div>
           </div>`
@@ -49,7 +53,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                 .join("")
             : ""
         }
-        <div class="panel-num">#${i + 1}</div>
+        <div class="panel-num">Panel #${i + 1} • ${beat.title}</div>
       </div>`
       )
       .join("\n");
@@ -65,13 +69,14 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
   .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 4px solid #000; padding-bottom: 12px; margin-bottom: 20px; color: #000; }
   .header h1 { margin: 0; font-size: 28px; text-transform: uppercase; font-weight: 900; letter-spacing: -0.5px; }
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-  .panel { position: relative; border: 3.5px solid #000; aspect-ratio: 16/9; overflow: hidden; background: #000; }
+  .panel { position: relative; border: 3.5px solid #000; aspect-ratio: 16/9; overflow: hidden; background: #000; box-shadow: 4px 4px 0 #000; }
+  .hero-panel { grid-column: span 2; aspect-ratio: 21/9; }
   .panel img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .panel-num { position: absolute; bottom: 6px; right: 8px; background: #000; color: #fff; font-size: 10px; font-weight: 900; padding: 2px 6px; }
-  .bubble { position: absolute; transform: translate(-50%, -50%); background: #fff; color: #000; border: 2px solid #000; padding: 6px 10px; border-radius: 14px; font-size: 11px; font-weight: 800; max-width: 210px; box-shadow: 3px 3px 0 #000; }
-  .bubble.narration { background: #fef3c7; border-radius: 0; text-transform: uppercase; font-size: 10px; }
+  .panel-num { position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.85); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+  .bubble { position: absolute; background: #fff; color: #000; border: 2px solid #000; padding: 6px 10px; border-radius: 12px; font-size: 10px; font-weight: 800; max-width: 220px; box-shadow: 2px 2px 0 #000; line-height: 1.3; }
+  .bubble.narration { background: #fef3c7; border-radius: 0; text-transform: uppercase; font-size: 9px; box-shadow: 2px 2px 0 #000; }
   .bubble.sfx { background: transparent; border: none; box-shadow: none; color: #facc15; font-size: 22px; font-style: italic; font-weight: 900; text-shadow: 2px 2px 0 #000; }
-  .speaker { font-size: 9px; color: #52525b; text-transform: uppercase; margin-bottom: 2px; }
+  .speaker { font-size: 8px; color: #52525b; text-transform: uppercase; margin-bottom: 2px; font-weight: 900; }
 </style>
 </head>
 <body>
@@ -265,16 +270,12 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
             }
           >
             {project.beats.map((beat, idx) => {
-              // In manga_dynamic layout, panel 0 and every 4th panel span full width or 4 cols for dramatic comic pacing
+              // In manga_dynamic layout, panel 0 spans full width (hero banner), subsequent panels form balanced pairs
               const spanClass =
                 layout === "manga_dynamic"
                   ? idx % 5 === 0
                     ? "md:col-span-6 aspect-[21/9]"
-                    : idx % 5 === 1 || idx % 5 === 2
-                    ? "md:col-span-3 aspect-video"
-                    : idx % 5 === 3
-                    ? "md:col-span-4 aspect-video"
-                    : "md:col-span-2 aspect-video"
+                    : "md:col-span-3 aspect-video"
                   : "aspect-video";
 
               return (
@@ -311,37 +312,52 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                     {/* Speech Bubbles & Captions Overlay */}
                     {showBubbles && (
                       <div className="absolute inset-0 pointer-events-none">
-                        {beat.captions.map((cap) => (
-                          <div
-                            key={cap.id}
-                            style={{ left: `${cap.xPercent}%`, top: `${cap.yPercent}%` }}
-                            className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                          >
-                            {cap.type === "narration" ? (
-                              <div className="bg-amber-100 text-black font-black text-[10px] px-2.5 py-1 uppercase tracking-wide border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[220px]">
-                                {cap.text}
-                              </div>
-                            ) : cap.type === "sfx" ? (
-                              <div className="font-black italic text-xl tracking-tighter text-amber-400 drop-shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase">
-                                {cap.text}
-                              </div>
-                            ) : cap.type === "thought" ? (
-                              <div className="bg-sky-50 text-black text-[10px] italic font-bold px-3 py-1.5 rounded-full border-2 border-dashed border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[190px]">
-                                {cap.speaker && <span className="block text-[8px] uppercase text-zinc-500 not-italic">{cap.speaker} (thinks):</span>}
-                                {cap.text}
-                              </div>
-                            ) : (
-                              <div className="bg-white text-black text-[10px] font-bold px-2.5 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[190px]">
-                                {cap.speaker && (
-                                  <span className="block text-[8px] text-zinc-600 uppercase font-black">
-                                    {cap.speaker}:
-                                  </span>
-                                )}
-                                <p className="leading-tight">{cap.text}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        {beat.captions.map((cap) => {
+                          const isNarration = cap.type === "narration";
+                          return (
+                            <div
+                              key={cap.id}
+                              style={
+                                isNarration
+                                  ? {
+                                      left: `${Math.max(22, Math.min(78, cap.xPercent))}%`,
+                                      top: "10px",
+                                    }
+                                  : {
+                                      left: `${Math.max(18, Math.min(82, cap.xPercent))}%`,
+                                      top: `${Math.max(24, Math.min(76, cap.yPercent))}%`,
+                                    }
+                              }
+                              className={`absolute transform -translate-x-1/2 ${
+                                isNarration ? "translate-y-0" : "-translate-y-1/2"
+                              }`}
+                            >
+                              {cap.type === "narration" ? (
+                                <div className="bg-amber-100 text-black font-black text-[9px] sm:text-[10px] px-2.5 py-1 uppercase tracking-wide border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[240px] leading-snug">
+                                  {cap.text}
+                                </div>
+                              ) : cap.type === "sfx" ? (
+                                <div className="font-black italic text-xl tracking-tighter text-amber-400 drop-shadow-[2px_2px_0px_rgba(0,0,0,1)] uppercase">
+                                  {cap.text}
+                                </div>
+                              ) : cap.type === "thought" ? (
+                                <div className="bg-sky-50 text-black text-[9px] sm:text-[10px] italic font-bold px-3 py-1.5 rounded-full border-2 border-dashed border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[190px]">
+                                  {cap.speaker && <span className="block text-[8px] uppercase text-zinc-500 not-italic">{cap.speaker} (thinks):</span>}
+                                  {cap.text}
+                                </div>
+                              ) : (
+                                <div className="bg-white text-black text-[9px] sm:text-[10px] font-bold px-2.5 py-1.5 rounded-xl border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] max-w-[190px]">
+                                  {cap.speaker && (
+                                    <span className="block text-[8px] text-zinc-600 uppercase font-black">
+                                      {cap.speaker}:
+                                    </span>
+                                  )}
+                                  <p className="leading-tight">{cap.text}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

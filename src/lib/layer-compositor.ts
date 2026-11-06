@@ -456,7 +456,7 @@ function buildProceduralUnstoredLayers(
       </g>
     `;
   }
-  if (/\b(demon wing|bat wing|dragon wing|dark wing)\b/.test(fullText)) {
+  if (/\b(demon wing|bat wing|dragon wing|dark wing|demon|devil|horns)\b/.test(fullText) && !/\b(angel|valkyrie|seraph)\b/.test(fullText)) {
     backSvg += `
       <g fill="#4c0519" stroke="#f43f5e" stroke-width="2.5">
         <polygon points="-35,55 -135,-15 -155,65 -115,55 -130,115 -85,90 -50,110"/>
@@ -1135,7 +1135,13 @@ export function parseSceneLayersFromText(
       .filter((p) => p.length > 2)
       .some((p) => combined.includes(p))
   );
-  const activeCharacters = sceneChars.length > 0 ? sceneChars.slice(0, 3) : characters.slice(0, Math.min(2, characters.length));
+  const hasMultipleCue = /\b(they|them|both|two|confront|clash|together|duel|each other|vs|against|deflect)\b/.test(combined);
+  const activeCharacters =
+    sceneChars.length > 0
+      ? hasMultipleCue && sceneChars.length === 1 && characters.length > 1
+        ? [sceneChars[0], ...characters.filter((c) => c.id !== sceneChars[0].id).slice(0, 1)]
+        : sceneChars.slice(0, 3)
+      : characters.slice(0, Math.min(2, characters.length));
 
   const posePool: CharPose[] = ["standing", "action", "pointing", "crouching", "aiming", "crossed_arms", "blade_ready"];
 
@@ -1172,9 +1178,9 @@ export function parseSceneLayersFromText(
       expression = "wink";
     } else if (combined.includes("worried") || combined.includes("nervous") || combined.includes("anxious") || combined.includes("sweat")) {
       expression = "worried";
-    } else if (combined.includes("angry") || combined.includes("fierce") || combined.includes("shout") || combined.includes("yell")) {
+    } else if (/\b(clash|strike|fight|collided|battle|combat|blades|furious|rage|angry|fierce|shout|yell)\b/.test(combined)) {
       expression = "angry";
-    } else if (combined.includes("shock") || combined.includes("ambush") || combined.includes("surround") || combined.includes("trap") || combined.includes("surprised")) {
+    } else if (/\b(shocked|surprised|gasp|stunned|ambush|trap)\b/.test(combined)) {
       expression = "shocked";
     } else if (combined.includes("smirk") || combined.includes("confident") || combined.includes("smile")) {
       expression = "smirking";
@@ -1637,7 +1643,8 @@ function renderCharacterLayerSvg(
       ? `<path d="M -11 27 Q -5 23 0 27 Q 5 31 11 26" fill="none" stroke="#09090b" stroke-width="2.4" stroke-linecap="round"/>
          <path d="M 28 -16 C 24 -4, 34 -4, 28 -16 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2"/>`
       : expression === "shocked"
-      ? `<ellipse cx="0" cy="27" rx="6" ry="5" fill="#450a0a" stroke="#09090b" stroke-width="2"/>`
+      ? `<path d="M -8 24 Q 0 21 8 24 Q 7 29 0 30 Q -7 29 -8 24 Z" fill="#3b0707" stroke="#09090b" stroke-width="2"/>
+         <line x1="-5" y1="24" x2="5" y2="24" stroke="#ffffff" stroke-width="1.5"/>`
       : expression === "smirking" || expression === "wink"
       ? `<path d="M -9 26 Q 4 29 14 20" fill="none" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/>`
       : `<path d="M -10 26 Q 0 28 11 24" fill="none" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/>
@@ -1894,28 +1901,94 @@ function renderCharacterLayerSvg(
   `;
 }
 
-function renderWeatherAndVfxSvg(weather: WeatherType, vfx: VfxType[], accentColor: string): string {
+function renderAtmosphericBackVfxSvg(vfx: VfxType[], accentColor: string): string {
+  let out = "";
+
+  if (vfx.includes("sparks")) {
+    out += `
+      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <!-- Cloud discharge in upper sky (away from character faces) -->
+        <circle cx="512" cy="75" r="140" fill="#38bdf8" opacity="0.15"/>
+        <polyline points="480,0 512,45 465,95 520,135 485,170" stroke="#e0f2fe" stroke-width="4" opacity="0.9"/>
+        <polyline points="480,0 535,50 495,100 550,135" stroke="${accentColor}" stroke-width="2.5" opacity="0.85"/>
+        <!-- Left sky horizon bolt -->
+        <polyline points="140,0 180,65 145,120 210,185 175,245 220,310" stroke="#38bdf8" stroke-width="3" opacity="0.85"/>
+        <polyline points="180,65 240,110 215,150" stroke="#facc15" stroke-width="2" opacity="0.8"/>
+        <!-- Right sky horizon bolt -->
+        <polyline points="880,0 835,70 875,130 820,195 865,260" stroke="#38bdf8" stroke-width="3" opacity="0.85"/>
+        <polyline points="835,70 780,115 805,155" stroke="${accentColor}" stroke-width="2" opacity="0.8"/>
+      </g>
+    `;
+  }
+
+  if (vfx.includes("lasers")) {
+    out += `
+      <g>
+        <g fill="#090d16" stroke="#ef4444" stroke-width="2">
+          <polygon points="150,98 230,98 215,114 165,114"/>
+          <circle cx="190" cy="106" r="6" fill="#ef4444"/>
+          <polygon points="790,88 870,88 855,104 805,104"/>
+          <circle cx="830" cy="96" r="6" fill="#ef4444"/>
+        </g>
+        <g stroke="#ef4444" stroke-width="2" opacity="0.85">
+          <line x1="190" y1="106" x2="380" y2="395"/>
+          <line x1="830" y1="96" x2="640" y2="375"/>
+        </g>
+      </g>
+    `;
+  }
+
+  if (vfx.includes("explosion")) {
+    out += `
+      <g>
+        <circle cx="760" cy="225" r="140" fill="#ea580c" opacity="0.32"/>
+        <polygon points="760,110 788,190 868,165 810,235 882,285 792,275 760,355 728,275 650,285 712,235 665,165 732,190" fill="#f97316" opacity="0.8"/>
+        <circle cx="760" cy="225" r="42" fill="#fef08a" opacity="0.92"/>
+      </g>
+    `;
+  }
+
+  if (vfx.includes("magic_aura")) {
+    out += `
+      <g fill="none" stroke="${accentColor}" stroke-width="2.5" opacity="0.35">
+        <circle cx="320" cy="300" r="130" stroke-dasharray="8 6"/>
+        <circle cx="704" cy="300" r="130" stroke-dasharray="8 6"/>
+      </g>
+    `;
+  }
+
+  return out;
+}
+
+function renderForegroundWeatherSvg(weather: WeatherType, vfx: VfxType[]): string {
   let out = "";
 
   if (weather === "rain" || weather === "heavy_rain") {
-    const count = weather === "heavy_rain" ? 65 : 36;
-    const lines: string[] = [];
+    const count = weather === "heavy_rain" ? 110 : 58;
+    const len = weather === "heavy_rain" ? 38 : 22;
+    const angle = weather === "heavy_rain" ? 14 : 9;
+    const streaks: string[] = [];
     for (let i = 0; i < count; i++) {
-      const x = (i * 97) % 1024;
-      const y = (i * 67) % 540;
-      const len = 38 + (i % 3) * 14;
-      lines.push(`<line x1="${x}" y1="${y}" x2="${x - 16}" y2="${y + len}" />`);
+      const x1 = (i * 37 + (i % 7) * 19) % 1024;
+      const y1 = (i * 29 + (i % 5) * 43) % 560;
+      const x2 = x1 - angle;
+      const y2 = y1 + len;
+      streaks.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`);
     }
-    out += `<g stroke="#93c5fd" stroke-width="1.4" opacity="0.45">${lines.join("")}</g>`;
+    out += `
+      <g stroke="#93c5fd" stroke-width="1.3" opacity="${weather === "heavy_rain" ? "0.45" : "0.28"}">
+        ${streaks.join("")}
+      </g>
+    `;
   }
 
   if (weather === "fog" || weather === "smoke") {
     const color = weather === "smoke" ? "#52525b" : "#cbd5e1";
     out += `
-      <g fill="${color}" opacity="0.22">
-        <ellipse cx="260" cy="465" rx="350" ry="70"/>
-        <ellipse cx="780" cy="495" rx="370" ry="85"/>
-        <ellipse cx="512" cy="395" rx="460" ry="55" opacity="0.14"/>
+      <g fill="${color}" opacity="0.18">
+        <ellipse cx="260" cy="510" rx="350" ry="60"/>
+        <ellipse cx="780" cy="520" rx="370" ry="70"/>
+        <ellipse cx="512" cy="460" rx="460" ry="45" opacity="0.12"/>
       </g>
     `;
   }
@@ -1930,50 +2003,6 @@ function renderWeatherAndVfxSvg(weather: WeatherType, vfx: VfxType[], accentColo
     }
     const col = weather === "embers" ? "#f97316" : weather === "ash" ? "#fb923c" : "#f8fafc";
     out += `<g fill="${col}" opacity="0.7">${flakes.join("")}</g>`;
-  }
-
-  if (vfx.includes("lasers")) {
-    out += `
-      <g>
-        <g fill="#090d16" stroke="#ef4444" stroke-width="2">
-          <polygon points="150,98 230,98 215,114 165,114"/>
-          <circle cx="190" cy="106" r="6" fill="#ef4444"/>
-          <polygon points="790,88 870,88 855,104 805,104"/>
-          <circle cx="830" cy="96" r="6" fill="#ef4444"/>
-          <polygon points="485,62 555,62 542,76 498,76"/>
-          <circle cx="520" cy="69" r="5" fill="#ef4444"/>
-        </g>
-        <polygon points="190,106 420,410 490,410" fill="#ef4444" opacity="0.12"/>
-        <polygon points="830,96 510,390 580,390" fill="#ef4444" opacity="0.12"/>
-        <g stroke="#ef4444" stroke-width="2.5" opacity="0.9">
-          <line x1="190" y1="106" x2="455" y2="395"/>
-          <line x1="830" y1="96" x2="545" y2="375"/>
-          <line x1="520" y1="69" x2="355" y2="425"/>
-        </g>
-      </g>
-    `;
-  }
-
-  if (vfx.includes("sparks")) {
-    out += `
-      <g fill="none" stroke-linejoin="round" stroke-linecap="round">
-        <circle cx="512" cy="260" r="115" fill="#38bdf8" opacity="0.18"/>
-        <polyline points="512,135 468,215 535,238 450,325 518,352 425,455" stroke="#e0f2fe" stroke-width="5.5" opacity="0.95"/>
-        <polyline points="512,135 568,225 495,260 590,345 530,430" stroke="${accentColor}" stroke-width="3.5"/>
-        <polyline points="468,215 390,265 415,295 335,355" stroke="#38bdf8" stroke-width="2.5"/>
-        <polyline points="190,195 250,245 215,278 295,340" stroke="#facc15" stroke-width="2.8"/>
-      </g>
-    `;
-  }
-
-  if (vfx.includes("explosion")) {
-    out += `
-      <g>
-        <circle cx="760" cy="255" r="150" fill="#ea580c" opacity="0.32"/>
-        <polygon points="760,130 788,210 868,185 810,255 882,305 792,295 760,375 728,295 650,305 712,255 665,185 732,210" fill="#f97316" opacity="0.8"/>
-        <circle cx="760" cy="255" r="48" fill="#fef08a" opacity="0.92"/>
-      </g>
-    `;
   }
 
   if (vfx.includes("speed_lines")) {
@@ -2018,6 +2047,11 @@ export function composeLayeredSceneDataUri(
     beatDescription
   );
 
+  const bgVfxSvg = renderAtmosphericBackVfxSvg(
+    parsed.vfx,
+    parsed.background.accentColor
+  );
+
   const charsSvg = parsed.charPlacements
     .map((p) =>
       renderCharacterLayerSvg(
@@ -2032,16 +2066,16 @@ export function composeLayeredSceneDataUri(
     )
     .join("\n");
 
-  const vfxSvg = renderWeatherAndVfxSvg(
+  const fgWeatherSvg = renderForegroundWeatherSvg(
     parsed.weather,
-    parsed.vfx,
-    parsed.background.accentColor
+    parsed.vfx
   );
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 576" width="1024" height="576">
     ${bgSvg}
+    ${bgVfxSvg}
     ${charsSvg}
-    ${vfxSvg}
+    ${fgWeatherSvg}
     <rect width="1024" height="576" fill="none" stroke="#09090b" stroke-width="14"/>
   </svg>`;
 
