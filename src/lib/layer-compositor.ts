@@ -827,50 +827,92 @@ export function deriveCharacterRig(char: CharacterProfile, artStyle: string): Ch
       : "#38bdf8";
 
   let outfitStyle: OutfitStyleType = "trench_coat";
-  if (attireText.includes("lab") || attireText.includes("white") || attireText.includes("scientist")) outfitStyle = "lab_coat";
-  else if (attireText.includes("military") || attireText.includes("field jacket") || attireText.includes("uniform") || attireText.includes("olive")) outfitStyle = "military_armor";
-  else if (attireText.includes("samurai") || attireText.includes("kimono") || attireText.includes("ronin")) outfitStyle = "samurai_garb";
-  else if (attireText.includes("royal") || attireText.includes("cloak") || attireText.includes("mage")) outfitStyle = "royal_cloak";
-  else if (attireText.includes("stealth") || attireText.includes("assassin") || attireText.includes("pilot")) outfitStyle = "stealth_suit";
-  else if (attireText.includes("wasteland") || attireText.includes("plate")) outfitStyle = "wasteland_plate";
-  else if (attireText.includes("cyber") || attireText.includes("jacket") || isFemale) outfitStyle = "cyber_jacket";
+  const charText = `${char.name} ${char.role} ${char.currentAttire} ${char.identity.facialFeatures} ${char.identity.hairAndEyes}`.toLowerCase();
+  const isDemon = /\b(demon|devil|infernal|fiend|hell|horns|scythe|reaper|fallen|dante)\b/.test(charText);
+  const isAngel = /\b(seraph|seraphina|angel|valkyrie|celestial|halo|wings|feathered wings|holy|divine|cleric|paladin)\b/.test(charText) && !isDemon;
 
-  const [outfitPrimary, outfitDark] =
-    /\b(crimson|red|scarlet|ruby|maroon)\b/.test(attireText)
-      ? ["#881337", "#4c0519"]
-      : /\b(gold|golden|yellow|amber)\b/.test(attireText)
-      ? ["#b45309", "#78350f"]
-      : /\b(green|emerald|jade|lime)\b/.test(attireText)
-      ? ["#065f46", "#064e3b"]
-      : /\b(olive|military|field jacket|uniform|camo)\b/.test(attireText)
-      ? ["#3f4f3c", "#232d21"]
-      : /\b(blue|navy|cobalt|sapphire|cyan)\b/.test(attireText)
-      ? ["#1e3a8a", "#172554"]
-      : /\b(white|silver|ivory|lab)\b/.test(attireText)
-      ? ["#e2e8f0", "#94a3b8"]
-      : /\b(purple|violet|royal|plum)\b/.test(attireText)
-      ? ["#3b0764", "#1e1b4b"]
-      : /\b(brown|leather|bronze|copper)\b/.test(attireText)
-      ? ["#5c2d16", "#3b1d0e"]
-      : /\b(trench|dark|black|coat|obsidian)\b/.test(attireText)
-      ? ["#1e2536", "#0d111a"]
-      : [
-          ["#1e2536", "#0d111a"],
-          ["#312e81", "#1e1b4b"],
-          ["#27272a", "#18181b"],
-          ["#134e4a", "#042f2e"]
-        ][h % 4];
+  if (isAngel || charText.includes("royal") || charText.includes("cloak") || charText.includes("robe") || charText.includes("mage")) outfitStyle = "royal_cloak";
+  else if (isDemon || charText.includes("wasteland") || charText.includes("plate") || charText.includes("armor") || charText.includes("knight")) outfitStyle = "wasteland_plate";
+  else if (charText.includes("lab") || charText.includes("scientist") || charText.includes("doctor")) outfitStyle = "lab_coat";
+  else if (charText.includes("military") || charText.includes("field jacket") || charText.includes("uniform") || charText.includes("olive") || charText.includes("commander")) outfitStyle = "military_armor";
+  else if (charText.includes("samurai") || charText.includes("kimono") || charText.includes("ronin")) outfitStyle = "samurai_garb";
+  else if (charText.includes("stealth") || charText.includes("assassin") || charText.includes("pilot")) outfitStyle = "stealth_suit";
+  else if (charText.includes("cyber") || charText.includes("jacket") || isFemale) outfitStyle = "cyber_jacket";
+
+  let outfitPrimary = "#18181b";
+  let outfitDark = "#09090b";
+
+  if (isDemon) {
+    if (charText.includes("crimson") || charText.includes("red")) {
+      outfitPrimary = "#881337";
+      outfitDark = "#4c0519";
+    } else {
+      outfitPrimary = "#18181b";
+      outfitDark = "#09090b";
+    }
+  } else if (isAngel) {
+    if (charText.includes("purple") || charText.includes("royal") || charText.includes("violet")) {
+      outfitPrimary = "#3b0764";
+      outfitDark = "#1e1b4b";
+    } else {
+      outfitPrimary = "#f1f5f9";
+      outfitDark = "#cbd5e1";
+    }
+  } else if (/\b(crimson|red|scarlet|ruby|maroon)\b/.test(attireText)) {
+    outfitPrimary = "#881337";
+    outfitDark = "#4c0519";
+  } else if (/\b(gold|golden|yellow|amber)\b/.test(attireText)) {
+    outfitPrimary = "#b45309";
+    outfitDark = "#78350f";
+  } else if (/\b(green|emerald|jade|lime)\b/.test(attireText)) {
+    outfitPrimary = "#065f46";
+    outfitDark = "#064e3b";
+  } else if (/\b(olive|military|field jacket|uniform|camo)\b/.test(attireText)) {
+    outfitPrimary = "#3f4f3c";
+    outfitDark = "#232d21";
+  } else if (/\b(blue|navy|cobalt|sapphire)\b/.test(attireText)) {
+    outfitPrimary = "#1e3a8a";
+    outfitDark = "#172554";
+  } else if (/\b(white|silver|ivory|lab)\b/.test(attireText)) {
+    outfitPrimary = "#e2e8f0";
+    outfitDark = "#94a3b8";
+  } else if (/\b(purple|violet|royal|plum)\b/.test(attireText)) {
+    outfitPrimary = "#3b0764";
+    outfitDark = "#1e1b4b";
+  } else if (/\b(brown|leather|bronze|copper)\b/.test(attireText)) {
+    outfitPrimary = "#5c2d16";
+    outfitDark = "#3b1d0e";
+  } else if (/\b(trench|dark|black|coat|obsidian)\b/.test(attireText)) {
+    outfitPrimary = "#1e2536";
+    outfitDark = "#0d111a";
+  } else {
+    const fallbackPalettes = [
+      ["#18181b", "#09090b"],
+      ["#312e81", "#1e1b4b"],
+      ["#1e2536", "#0d111a"],
+      ["#064e3b", "#022c22"],
+      ["#1e3a8a", "#172554"],
+      ["#27272a", "#18181b"]
+    ];
+    [outfitPrimary, outfitDark] = fallbackPalettes[h % fallbackPalettes.length];
+  }
 
   const outfitSecondary =
-    fullText.includes("neon") || fullText.includes("cyber") || hairEyeText.includes("cyan")
+    isDemon
+      ? "#ef4444"
+      : isAngel
+      ? "#f59e0b"
+      : charText.includes("cyan") || charText.includes("neon")
       ? "#00f5d4"
-      : attireText.includes("crimson") || isFemale
+      : charText.includes("crimson") || charText.includes("scarlet")
       ? "#f43f5e"
-      : fullText.includes("royal") || fullText.includes("mage")
+      : charText.includes("royal") || charText.includes("mage") || charText.includes("purple")
       ? "#c084fc"
-      : fullText.includes("captain") || fullText.includes("ranger")
-      ? "#ea580c"
-      : "#f59e0b";
+      : charText.includes("gold") || charText.includes("yellow")
+      ? "#f59e0b"
+      : isFemale
+      ? "#f43f5e"
+      : "#38bdf8";
 
   const faceAndHair = `${faceText} ${hairEyeText}`;
   let accessory: AccessoryType = "none";
@@ -997,44 +1039,68 @@ export function parseSceneLayersFromText(
   sequenceIndex: number = 0,
   variationSeed: number = 0
 ) {
-  const combined = `${beatDescription} ${styleBible.visualTone} ${styleBible.lightingStyle} ${editDirective || ""}`.toLowerCase();
   const editLower = (editDirective || "").toLowerCase();
+  const textPool = `${beatDescription} ${editDirective || ""}`.toLowerCase();
+  // If the user's latest edit or beat requests plain background or clears weather, honor it over the initial story text
+  const isPlainBg =
+    textPool.includes("plain") ||
+    textPool.includes("solid background") ||
+    textPool.includes("flat background") ||
+    textPool.includes("plain background") ||
+    textPool.includes("solid color") ||
+    textPool.includes("monochrome background") ||
+    textPool.includes("blank background") ||
+    /\b(plain|solid|flat)\s+(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\b/.test(textPool) ||
+    /\b(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\s+background\b/.test(textPool);
+
+  const noRainRequested =
+    textPool.includes("no rain") ||
+    textPool.includes("remove rain") ||
+    textPool.includes("stop rain") ||
+    textPool.includes("clear weather") ||
+    isPlainBg;
+
+  const combined = `${beatDescription} ${styleBible.visualTone} ${styleBible.lightingStyle} ${editDirective || ""}`.toLowerCase();
 
   const background = selectBestBackground(beatDescription, styleBible.artStyle, editDirective, sequenceIndex, variationSeed);
 
   let weather: WeatherType = "none";
-  if (combined.includes("heavy rain") || combined.includes("heavy_rain") || combined.includes("downpour") || combined.includes("storm")) {
-    weather = "heavy_rain";
-  } else if (combined.includes("rain") || combined.includes("wet") || combined.includes("drizzle") || combined.includes("spray")) {
-    weather = "rain";
-  } else if (combined.includes("ember") || combined.includes("fire") || combined.includes("burning")) {
-    weather = "embers";
-  } else if (combined.includes("fog") || combined.includes("mist") || combined.includes("haze")) {
-    weather = "fog";
-  } else if (combined.includes("smoke") || combined.includes("artillery")) {
-    weather = "smoke";
-  } else if (combined.includes("snow") || combined.includes("blizzard")) {
-    weather = "snow";
+  if (!noRainRequested) {
+    if (combined.includes("heavy rain") || combined.includes("heavy_rain") || combined.includes("downpour") || combined.includes("storm")) {
+      weather = "heavy_rain";
+    } else if (combined.includes("rain") || combined.includes("wet") || combined.includes("drizzle") || combined.includes("spray")) {
+      weather = "rain";
+    } else if (combined.includes("ember") || combined.includes("fire") || combined.includes("burning")) {
+      weather = "embers";
+    } else if (combined.includes("fog") || combined.includes("mist") || combined.includes("haze")) {
+      weather = "fog";
+    } else if (combined.includes("smoke") || combined.includes("artillery")) {
+      weather = "smoke";
+    } else if (combined.includes("snow") || combined.includes("blizzard")) {
+      weather = "snow";
+    }
   }
 
   const vfx: VfxType[] = [];
-  if (combined.includes("spark") || combined.includes("voltage") || combined.includes("transformer") || combined.includes("electric") || combined.includes("lightning") || combined.includes("coil")) {
-    vfx.push("sparks");
-  }
-  if (combined.includes("laser") || combined.includes("drone") || combined.includes("red beam") || combined.includes("sights") || combined.includes("target")) {
-    vfx.push("lasers");
-  }
-  if (combined.includes("explosion") || combined.includes("blast") || combined.includes("detonat")) {
-    vfx.push("explosion");
-  }
-  if (combined.includes("hologram") || combined.includes("holographic") || combined.includes("blueprint") || combined.includes("projection") || combined.includes("drive")) {
-    vfx.push("hologram");
-  }
-  if (combined.includes("lunging") || combined.includes("struck") || combined.includes("strikes") || combined.includes("leap") || combined.includes("action") || combined.includes("speed") || combined.includes("counter")) {
-    vfx.push("speed_lines");
-  }
-  if (combined.includes("magic") || combined.includes("spell") || combined.includes("aura") || combined.includes("power")) {
-    vfx.push("magic_aura");
+  if (!isPlainBg || (editDirective && (editDirective.includes("spark") || editDirective.includes("laser") || editDirective.includes("explosion")))) {
+    if (combined.includes("spark") || combined.includes("voltage") || combined.includes("transformer") || combined.includes("electric") || combined.includes("lightning") || combined.includes("coil")) {
+      vfx.push("sparks");
+    }
+    if (combined.includes("laser") || combined.includes("drone") || combined.includes("red beam") || combined.includes("sights") || combined.includes("target")) {
+      vfx.push("lasers");
+    }
+    if (combined.includes("explosion") || combined.includes("blast") || combined.includes("detonat")) {
+      vfx.push("explosion");
+    }
+    if (combined.includes("hologram") || combined.includes("holographic") || combined.includes("blueprint") || combined.includes("projection") || combined.includes("drive")) {
+      vfx.push("hologram");
+    }
+    if (combined.includes("lunging") || combined.includes("struck") || combined.includes("strikes") || combined.includes("leap") || combined.includes("action") || combined.includes("speed") || combined.includes("counter")) {
+      vfx.push("speed_lines");
+    }
+    if (combined.includes("magic") || combined.includes("spell") || combined.includes("aura") || combined.includes("power")) {
+      vfx.push("magic_aura");
+    }
   }
 
   const cameraCycle: CameraShot[] = ["medium", "closeup", "wide", "low_angle", "dramatic_side"];
@@ -1140,8 +1206,59 @@ function renderBackgroundLayerSvg(
   bg: BackgroundDef,
   palette: string[],
   lighting: LightingMood,
-  variationSeed: number = 0
+  variationSeed: number = 0,
+  editDirective?: string,
+  beatDescription?: string
 ): string {
+  const textPool = `${beatDescription || ""} ${editDirective || ""}`.toLowerCase();
+  const isPlain =
+    textPool.includes("plain") ||
+    textPool.includes("solid background") ||
+    textPool.includes("flat background") ||
+    textPool.includes("plain background") ||
+    textPool.includes("solid color") ||
+    textPool.includes("monochrome background") ||
+    textPool.includes("blank background") ||
+    /\b(plain|solid|flat)\s+(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\b/.test(textPool) ||
+    /\b(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\s+background\b/.test(textPool);
+
+  // If user asked for plain / solid color background
+  if (isPlain) {
+    let plainColor = "#18181b"; // default dark slate
+    if (textPool.includes("light green") || textPool.includes("mint") || textPool.includes("lime") || textPool.includes("pastel green")) {
+      plainColor = "#86efac";
+    } else if (textPool.includes("dark green") || textPool.includes("forest green")) {
+      plainColor = "#14532d";
+    } else if (textPool.includes("green") || textPool.includes("emerald")) {
+      plainColor = "#4ade80";
+    } else if (textPool.includes("white")) {
+      plainColor = "#f8fafc";
+    } else if (textPool.includes("black")) {
+      plainColor = "#09090b";
+    } else if (textPool.includes("yellow")) {
+      plainColor = "#fde047";
+    } else if (textPool.includes("cyan") || textPool.includes("teal")) {
+      plainColor = "#67e8f9";
+    } else if (textPool.includes("blue")) {
+      plainColor = "#60a5fa";
+    } else if (textPool.includes("pink")) {
+      plainColor = "#f472b6";
+    } else if (textPool.includes("purple") || textPool.includes("violet")) {
+      plainColor = "#c084fc";
+    } else if (textPool.includes("red") || textPool.includes("crimson")) {
+      plainColor = "#f87171";
+    } else if (textPool.includes("orange")) {
+      plainColor = "#fb923c";
+    } else if (textPool.includes("gray") || textPool.includes("grey")) {
+      plainColor = "#71717a";
+    }
+
+    return `
+      <rect width="1024" height="576" fill="${plainColor}"/>
+      <line x1="0" y1="520" x2="1024" y2="520" stroke="#000000" stroke-width="3" opacity="0.15"/>
+    `;
+  }
+
   const [skyTop, skyMid, skyBot] =
     lighting === "darker"
       ? ["#020308", "#060a12", "#0f172a"]
@@ -1351,6 +1468,112 @@ function renderBackgroundLayerSvg(
     <rect width="1024" height="576" fill="url(#ambientGlow)"/>
     ${sceneGeometry}
     <rect width="1024" height="576" fill="url(#halftone)"/>
+  `;
+}
+
+function renderOutfitSvg(rig: CharacterRigVisuals, uid: string): string {
+  if (rig.outfitStyle === "royal_cloak") {
+    // Flowing celestial mantle/cloak, tunic underneath, golden embroidery, jeweled brooch
+    return `
+      <path d="M -54 54 C -72 65, -82 95, -88 255 L 88 255 C 82 95, 72 65, 54 54 Z"
+            fill="${rig.outfitDark}" stroke="#09090b" stroke-width="3.5"/>
+      <polygon points="-24,54 24,54 16,255 -16,255" fill="#0f172a" stroke="${rig.outfitSecondary}" stroke-width="2.5"/>
+      <line x1="0" y1="58" x2="0" y2="255" stroke="${rig.outfitSecondary}" stroke-width="2" stroke-dasharray="8 4"/>
+      <path d="M -56 50 C -82 78, -96 140, -90 230 L -54 230 L -46 95 L 46 95 L 54 230 L 90 230 C 96 140, 82 78, 56 50 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M -48 46 Q 0 72 48 46" fill="none" stroke="${rig.outfitSecondary}" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="58" r="7" fill="${rig.outfitSecondary}" stroke="#09090b" stroke-width="2"/>
+      <circle cx="0" cy="58" r="3" fill="#ffffff"/>
+    `;
+  }
+
+  if (rig.outfitStyle === "wasteland_plate") {
+    // Demonic / Dark Warrior / Heavy Plate Armor with Spiked Pauldrons and Rune Core
+    return `
+      <path d="M -52 54 C -72 65, -80 95, -86 255 L 86 255 C 80 95, 72 65, 52 54 Z"
+            fill="#09090b" stroke="#09090b" stroke-width="4"/>
+      <polygon points="-46,58 46,58 38,155 0,185 -38,155" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <polygon points="-48,46 -88,32 -96,78 -56,86" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="3"/>
+      <polygon points="-88,32 -106,18 -92,54" fill="${rig.outfitPrimary}" stroke="#09090b" stroke-width="2.5"/>
+      <polygon points="48,46 88,32 96,78 56,86" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="3"/>
+      <polygon points="88,32 106,18 92,54" fill="${rig.outfitPrimary}" stroke="#09090b" stroke-width="2.5"/>
+      <polygon points="0,85 -18,110 0,135 18,110" fill="${rig.outfitSecondary}" stroke="#09090b" stroke-width="2.2" opacity="0.9"/>
+      <polygon points="-36,165 36,165 42,225 -42,225" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="3"/>
+      <line x1="-12" y1="165" x2="-14" y2="225" stroke="${rig.outfitSecondary}" stroke-width="2"/>
+      <line x1="12" y1="165" x2="14" y2="225" stroke="${rig.outfitSecondary}" stroke-width="2"/>
+    `;
+  }
+
+  if (rig.outfitStyle === "samurai_garb") {
+    // Overlapping Crossed Kimono Robes with Obi Sash
+    return `
+      <path d="M -54 54 C -76 65, -88 95, -92 255 L 92 255 C 88 95, 76 65, 54 54 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="4"/>
+      <polygon points="-48,46 12,145 0,175 -58,95" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="2.5"/>
+      <polygon points="48,46 -24,145 0,175 58,95" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+      <line x1="44" y1="48" x2="-16" y2="135" stroke="${rig.outfitSecondary}" stroke-width="3"/>
+      <line x1="-44" y1="48" x2="16" y2="135" stroke="${rig.outfitSecondary}" stroke-width="2" opacity="0.7"/>
+      <rect x="-42" y="160" width="84" height="42" rx="4" fill="#09090b" stroke="${rig.outfitSecondary}" stroke-width="2.5"/>
+      <line x1="-42" y1="181" x2="42" y2="181" stroke="${rig.outfitSecondary}" stroke-width="2"/>
+    `;
+  }
+
+  if (rig.outfitStyle === "military_armor") {
+    // Tactical Combat Uniform with Utility Webbing and Pouches
+    return `
+      <path d="M -52 54 C -76 60, -88 82, -94 185 L -64 185 L -54 98 L -68 255 L 68 255 L 54 98 L 64 185 L 94 185 C 88 82, 76 60, 52 54 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="4"/>
+      <polygon points="-24,54 24,54 18,255 -18,255" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="2.5"/>
+      <line x1="0" y1="58" x2="0" y2="255" stroke="${rig.outfitSecondary}" stroke-width="2"/>
+      <rect x="-42" y="95" width="28" height="38" rx="3" fill="#1e293b" stroke="#09090b" stroke-width="2"/>
+      <line x1="-42" y1="108" x2="-14" y2="108" stroke="${rig.outfitSecondary}" stroke-width="1.8"/>
+      <rect x="14" y="95" width="28" height="38" rx="3" fill="#1e293b" stroke="#09090b" stroke-width="2"/>
+      <line x1="14" y1="108" x2="42" y2="108" stroke="${rig.outfitSecondary}" stroke-width="1.8"/>
+      <polygon points="-48,46 -64,56 -48,64" fill="${rig.outfitSecondary}" stroke="#09090b" stroke-width="2"/>
+      <polygon points="48,46 64,56 48,64" fill="${rig.outfitSecondary}" stroke="#09090b" stroke-width="2"/>
+    `;
+  }
+
+  if (rig.outfitStyle === "lab_coat") {
+    // Open Research Lab Coat with Shirt and Dark Tie
+    return `
+      <polygon points="-32,54 32,54 22,255 -22,255" fill="#1e293b" stroke="#09090b" stroke-width="2.5"/>
+      <polygon points="-6,56 6,56 4,145 0,160 -4,145" fill="#09090b" stroke="${rig.outfitSecondary}" stroke-width="1.8"/>
+      <path d="M -54 54 C -78 60, -90 85, -94 255 L -36 255 L -18 135 L -38 52 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <path d="M 54 54 C 78 60, 90 85, 94 255 L 36 255 L 18 135 L 38 52 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <polygon points="-44,35 -54,82 -18,125 -28,52" fill="#f8fafc" stroke="#09090b" stroke-width="2.2"/>
+      <polygon points="44,35 54,82 18,125 28,52" fill="#f8fafc" stroke="#09090b" stroke-width="2.2"/>
+    `;
+  }
+
+  if (rig.outfitStyle === "stealth_suit") {
+    // Form-fitting Nano-Weave Bodysuit with Glowing Energy Lines
+    return `
+      <path d="M -48 54 C -68 62, -78 85, -82 255 L 82 255 C 78 85, 68 62, 48 54 Z"
+            fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <polygon points="-36,65 0,82 -32,165 -42,125" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="2"/>
+      <polygon points="36,65 0,82 32,165 42,125" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="2"/>
+      <path d="M -36 68 Q 0 88 36 68" fill="none" stroke="${rig.outfitSecondary}" stroke-width="2.5"/>
+      <path d="M 0 88 L 0 195" fill="none" stroke="${rig.outfitSecondary}" stroke-width="2.5"/>
+      <circle cx="0" cy="88" r="4" fill="${rig.outfitSecondary}"/>
+    `;
+  }
+
+  // Default: Trench Coat / High-Collar Cyber Jacket with Lapels
+  return `
+    <path d="M -52 54
+             C -76 60, -88 82, -94 185
+             L -64 185 L -54 98 L -68 255 L 68 255 L 54 98 L 64 185 L 94 185
+             C 88 82, 76 60, 52 54 Z"
+          fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="4" stroke-linejoin="round"/>
+
+    <polygon points="-28,54 28,54 18,195 -18,195" fill="#111520" stroke="#09090b" stroke-width="2.5"/>
+    <line x1="0" y1="68" x2="0" y2="195" stroke="${rig.outfitSecondary}" stroke-width="2" opacity="0.75"/>
+
+    <polygon points="-46,30 -58,78 -20,118 -28,52" fill="${rig.outfitDark}" stroke="${rig.outfitSecondary}" stroke-width="2.2" stroke-linejoin="round"/>
+    <polygon points="46,30 58,78 20,118 28,52" fill="${rig.outfitDark}" stroke="${rig.outfitSecondary}" stroke-width="2.2" stroke-linejoin="round"/>
   `;
 }
 
@@ -1605,17 +1828,7 @@ function renderCharacterLayerSvg(
         ${rig.customBackSvg || ""}
         ${backHairSvg}
 
-        <path d="M -52 54
-                 C -76 60, -88 82, -94 185
-                 L -64 185 L -54 98 L -68 255 L 68 255 L 54 98 L 64 185 L 94 185
-                 C 88 82, 76 60, 52 54 Z"
-              fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="4" stroke-linejoin="round"/>
-
-        <polygon points="-28,54 28,54 18,195 -18,195" fill="#111520" stroke="#09090b" stroke-width="2.5"/>
-        <line x1="0" y1="68" x2="0" y2="195" stroke="${rig.outfitSecondary}" stroke-width="2" opacity="0.75"/>
-
-        <polygon points="-46,30 -58,78 -20,118 -28,52" fill="${rig.outfitDark}" stroke="${rig.outfitSecondary}" stroke-width="2.2" stroke-linejoin="round"/>
-        <polygon points="46,30 58,78 20,118 28,52" fill="${rig.outfitDark}" stroke="${rig.outfitSecondary}" stroke-width="2.2" stroke-linejoin="round"/>
+        ${renderOutfitSvg(rig, uid)}
 
         <path d="M -16 20 Q -16 44 -24 58 L 24 58 Q 16 44 16 20 Z" fill="url(#skinGrad_${uid})" stroke="#09090b" stroke-width="3"/>
         <path d="M -15 22 Q 0 42 15 22 L 15 34 Q 0 48 -15 34 Z" fill="#09090b" opacity="0.38"/>
@@ -1800,7 +2013,9 @@ export function composeLayeredSceneDataUri(
     parsed.background,
     styleBible.colorPalette,
     parsed.lighting,
-    variationSeed
+    variationSeed,
+    editDirective,
+    beatDescription
   );
 
   const charsSvg = parsed.charPlacements

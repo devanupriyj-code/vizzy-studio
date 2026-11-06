@@ -49,15 +49,18 @@ Characters in Project: ${JSON.stringify(characters)}
 User's New Instruction: "${userInstruction}"
 
 Available Engine Capabilities:
-- Background Categories: cyberpunk, military, noir, fantasy, modern, space, wasteland, horror, historical
-- Background Settings: rooftop, alley, power_grid (transformer/voltage), street, interior (lab/office/room), beach (ocean/shore/hedgehog), bunker (trench/bluff), vehicle (landing craft/boat/cockpit), forest, bridge, courtyard (castle/temple/arena), vault (underground/subway/crypt)
-- Weather: none, rain, heavy_rain, fog, smoke, snow, ash
+- Background: plain / solid color background (e.g. plain light green, solid white, flat dark gray, plain cyan, plain pink, plain black, plain yellow, plain blue, plain purple, plain red), OR standard environments: cyberpunk, military, noir, fantasy, modern, space, wasteland, horror, historical (rooftop, alley, power_grid, street, interior, beach, bunker, vehicle, forest, bridge, courtyard, vault)
+- Weather: none (clear weather, remove rain, stop storm), rain, heavy_rain, fog, smoke, snow, ash
 - VFX Overlays: sparks, lasers (drones/red sights), explosion, hologram, speed_lines
 - Camera Shots: wide, medium, closeup, low_angle
 - Lighting Moods: default, darker, brighter, neon, crimson, warm, noir
-- Character Poses: standing, action, crouching, pointing, aiming, running
-- Character Expressions: determined, angry, shocked, calm, focused
-- Character Rig Traits: hair color (green, emerald, brown, orange, black, silver, white, blonde, golden, red, crimson, blue, cyan, teal, purple, violet, pink), hair style (spiky, long, short, ponytail, twin tails, braided, bob, undercut, messy, buzz, hooded, helmet, visor helm, crown, cowboy hat), eye color (cyan, emerald, green, blue, amber, gold, violet, purple, red, brown, silver), attire (dark trench coat, olive military uniform, crimson cyber jacket, gold samurai kimono, blue stealth suit, purple royal cloak, white lab coat, brown leather armor), props (rifle, holodrive, blade, katana, pistol, energy orb)
+- Character Poses: standing, action, crouching, pointing, aiming, running, crossed_arms, blade_ready, thumbs_up, thinking
+- Character Expressions: determined, angry, shocked, calm, focused, happy, sad, wink, worried, smirking
+- Character Rig Traits: hair color (green, emerald, brown, orange, black, silver, white, blonde, golden, red, crimson, blue, cyan, teal, purple, violet, pink), hair style (spiky, long, short, ponytail, twin tails, braided, bob, undercut, messy, buzz, hooded, helmet, visor helm, crown, cowboy hat), eye color (cyan, emerald, green, blue, amber, gold, violet, purple, red, brown, silver), attire (dark trench coat, olive military uniform, crimson cyber jacket, gold samurai kimono, blue stealth suit, purple royal cloak, white lab coat, brown leather armor, demon armor, angel robes), props (rifle, holodrive, blade, katana, pistol, energy orb, scythe, staff)
+
+CRITICAL INSTRUCTIONS:
+- If the user asks for a plain / solid / flat color background (e.g. "make the background plain light green", "solid white", "flat black"), "updatedDirective" MUST include the exact phrase (e.g. "plain light green background; no rain; brighter lighting") and "weather" should be "none".
+- If the user asks to remove weather (e.g. "remove rain", "no rain"), ensure "updatedDirective" includes "no rain".
 
 Return ONLY valid JSON matching this exact structure (no markdown fences):
 {

@@ -7,12 +7,19 @@ const IGNORED_PROJECT_IDS = new Set([
   "proj-overlord-1944"
 ]);
 
+// Helper to check if a project is a valid user project (not null/empty placeholder)
+export function isValidProject(project?: Project | null): boolean {
+  return Boolean(
+    project &&
+    project.id &&
+    !IGNORED_PROJECT_IDS.has(project.id) &&
+    project.title !== "Operation Overlord: Red Beach" &&
+    typeof project.title === "string"
+  );
+}
+
 export function isPlaceholderProject(project?: Project | null): boolean {
-  if (!project || !project.id) return true;
-  if (IGNORED_PROJECT_IDS.has(project.id)) return true;
-  if (project.title === "Operation Overlord: Red Beach") return true;
-  if (!Array.isArray(project.beats) || project.beats.length === 0) return true;
-  return false;
+  return !isValidProject(project) || !Array.isArray(project?.beats) || project.beats.length === 0;
 }
 
 function getUserKey(baseKey: string, userEmail?: string | null): string {
@@ -36,7 +43,7 @@ function getLocalProjectsList(userEmail?: string | null): Project[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const filtered = parsed.filter((p) => !isPlaceholderProject(p));
+    const filtered = parsed.filter((p) => isValidProject(p));
     if (filtered.length !== parsed.length) {
       localStorage.setItem(getUserKey("vizzy_projects_list", userEmail), JSON.stringify(filtered));
     }
@@ -49,7 +56,7 @@ function getLocalProjectsList(userEmail?: string | null): Project[] {
 function setLocalProjectsList(projects: Project[], userEmail?: string | null) {
   if (typeof window === "undefined") return;
   try {
-    const clean = projects.filter((p) => !isPlaceholderProject(p));
+    const clean = projects.filter((p) => isValidProject(p));
     localStorage.setItem(getUserKey("vizzy_projects_list", userEmail), JSON.stringify(clean));
   } catch (e) {
     console.warn("Could not save projects list to localStorage:", e);
@@ -64,7 +71,7 @@ export async function saveProject(
   project: Project,
   userEmail?: string | null
 ): Promise<{ success: boolean; cloud: boolean; error?: string }> {
-  if (isPlaceholderProject(project)) {
+  if (!isValidProject(project)) {
     return { success: false, cloud: false };
   }
 
@@ -136,14 +143,14 @@ export async function listSavedProjects(userEmail?: string | null): Promise<Proj
 
   if (typeof window !== "undefined") {
     for (const p of getLocalProjectsList(userEmail)) {
-      if (!isPlaceholderProject(p)) byId.set(p.id, p);
+      if (isValidProject(p)) byId.set(p.id, p);
     }
     try {
       const activeKey = getUserKey("vizzy_active_project", userEmail);
       const activeRaw = localStorage.getItem(activeKey);
       if (activeRaw) {
         const active = JSON.parse(activeRaw);
-        if (!isPlaceholderProject(active)) {
+        if (isValidProject(active)) {
           byId.set(active.id, active);
         } else {
           localStorage.removeItem(activeKey);
@@ -154,14 +161,18 @@ export async function listSavedProjects(userEmail?: string | null): Promise<Proj
     }
   }
 
+  // In local environments or before SQL tables are created, avoid spamming delete requests
   if (supabase && isSupabaseConfigured) {
     try {
-      for (const legacyId of IGNORED_PROJECT_IDS) {
-        await supabase.from("story_beats").delete().eq("project_id", legacyId);
-        await supabase.from("projects").delete().eq("id", legacyId);
+      const { error } = await supabase.from("projects").select("id").limit(1);
+      if (!error) {
+        for (const legacyId of IGNORED_PROJECT_IDS) {
+          await supabase.from("story_beats").delete().eq("project_id", legacyId);
+          await supabase.from("projects").delete().eq("id", legacyId);
+        }
       }
     } catch {
-      // ignore
+      // ignore table check failures
     }
   }
 

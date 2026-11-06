@@ -74,14 +74,62 @@ export function localPlanStory(title: string, story: string, numScenes: number):
     .slice(0, 3)
     .map(([n]) => n);
 
-  const characters: PlannedCharacter[] = (names.length ? names : ["The Protagonist"]).map((name, i) => ({
-    name,
-    role: i === 0 ? "Main Lead" : "Supporting Character",
-    age: "30s",
-    facialFeatures: "Distinctive, expressive face with a determined look",
-    hairAndEyes: "Dark hair, intense eyes",
-    attire: "Outfit fitting the story's world and era"
-  }));
+  const characters: PlannedCharacter[] = (names.length ? names : ["The Protagonist"]).map((name, i) => {
+    // Find the sentence introducing this character to extract specific visual traits
+    const introSentence = sentences.find((s) => s.includes(name)) || "";
+    const introLower = introSentence.toLowerCase();
+
+    let hairAndEyes = "Dark hair, intense eyes";
+    let facialFeatures = "Distinctive, expressive face with a determined look";
+    let attire = "Outfit fitting the story's world and era";
+
+    if (introLower.includes("crimson") || introLower.includes("red hair")) {
+      hairAndEyes = "crimson spiky hair, golden eyes";
+    } else if (introLower.includes("silver hair") || introLower.includes("white hair")) {
+      hairAndEyes = "long silver hair, blue eyes";
+    } else if (introLower.includes("blonde") || introLower.includes("golden hair")) {
+      hairAndEyes = "golden blonde hair, blue eyes";
+    } else if (introLower.includes("green hair")) {
+      hairAndEyes = "messy green hair, emerald eyes";
+    } else if (introLower.includes("cyan hair") || introLower.includes("blue hair")) {
+      hairAndEyes = "short cyan hair, blue eyes";
+    }
+
+    if (introLower.includes("horn") || introLower.includes("demon")) {
+      facialFeatures = "curved demon horns, sharp jaw";
+    } else if (introLower.includes("halo") || introLower.includes("angel") || introLower.includes("valkyrie") || introLower.includes("seraph")) {
+      facialFeatures = "glowing golden halo, ethereal fair skin";
+    } else if (introLower.includes("visor")) {
+      facialFeatures = "cyan cyber visor, sharp features";
+    } else if (introLower.includes("scar")) {
+      facialFeatures = "weathered jaw with cheek scar";
+    }
+
+    if (introLower.includes("scythe")) {
+      attire = "dark demon battle armor with flaming scythe";
+    } else if (introLower.includes("royal purple cloak") || (introLower.includes("cloak") && introLower.includes("purple"))) {
+      attire = "royal purple cloak with magic staff and angel wings";
+    } else if (introLower.includes("trench coat")) {
+      attire = "dark high-collar trench coat";
+    } else if (introLower.includes("cyber jacket")) {
+      attire = "crimson cyber jacket with holodrive";
+    } else if (introLower.includes("military") || introLower.includes("uniform")) {
+      attire = "olive military field jacket with rifle";
+    } else if (introLower.includes("lab coat") || introLower.includes("scientist")) {
+      attire = "white research lab coat with holodrive";
+    } else if (introLower.includes("kimono") || introLower.includes("samurai") || introLower.includes("katana")) {
+      attire = "midnight samurai kimono with katana";
+    }
+
+    return {
+      name,
+      role: i === 0 ? "Main Lead" : "Supporting Character",
+      age: "30s",
+      facialFeatures,
+      hairAndEyes,
+      attire
+    };
+  });
 
   return { scenes, characters, source: "local" };
 }

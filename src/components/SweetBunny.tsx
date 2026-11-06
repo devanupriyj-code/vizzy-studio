@@ -254,11 +254,23 @@ export const SweetBunny: React.FC<SweetBunnyProps> = ({
         className={`fixed select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"} group ${isModalOpen ? "z-[60]" : "z-40"}`}
         title="Drag me anywhere or click to chat!"
       >
-        {/* Soft speech bubble hint floating above bunny (always unmirrored for readable text) */}
+        {/* Soft speech bubble hint floating above bunny (always unmirrored and clamped within viewport) */}
         {bubbleHint && !isOpen && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 rounded-full bg-white text-zinc-900 border border-zinc-200 text-[11px] font-medium shadow-lg pointer-events-none animate-bounce">
+          <div
+            className={`absolute -top-10 whitespace-nowrap px-2.5 py-1 rounded-full bg-white text-zinc-900 border border-zinc-200 text-[11px] font-medium shadow-lg pointer-events-none animate-bounce ${
+              pos.x > 80
+                ? "right-0 translate-x-0"
+                : pos.x < 20
+                ? "left-0 translate-x-0"
+                : "left-1/2 -translate-x-1/2"
+            }`}
+          >
             {bubbleHint}
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white rotate-45 border-r border-b border-zinc-200" />
+            <div
+              className={`absolute -bottom-1 w-2 h-2 bg-white rotate-45 border-r border-b border-zinc-200 ${
+                pos.x > 80 ? "right-6" : pos.x < 20 ? "left-6" : "left-1/2 -translate-x-1/2"
+              }`}
+            />
           </div>
         )}
 

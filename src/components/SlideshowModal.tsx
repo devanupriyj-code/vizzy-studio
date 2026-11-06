@@ -38,11 +38,8 @@ export const SlideshowModal: React.FC<SlideshowModalProps> = ({
       lines.push(activeBeat.subtitleText);
     } else if (activeBeat.captions.length > 0) {
       activeBeat.captions.forEach((c) => {
-        if (c.speaker && c.type === "speech") {
-          lines.push(`${c.speaker} says: ${c.text}`);
-        } else {
-          lines.push(c.text);
-        }
+        // Natural speech delivery without robotic 'says:' prefix
+        lines.push(c.text);
       });
     } else {
       lines.push(activeBeat.userPromptDescription);

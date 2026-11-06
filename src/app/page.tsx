@@ -311,7 +311,22 @@ export default function VizzyStudioPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data.updatedDirective) directive = data.updatedDirective;
+          if (data.updatedDirective) {
+            directive = data.updatedDirective;
+            // Guard: If user explicitly asked for a plain/solid/flat background, clear weather, or specific color, preserve raw intent keywords if the AI response stripped them
+            const raw = (editText || "").toLowerCase();
+            const hasBgIntent =
+              raw.includes("plain") ||
+              raw.includes("solid") ||
+              raw.includes("flat") ||
+              raw.includes("background") ||
+              raw.includes("no rain") ||
+              raw.includes("remove rain") ||
+              raw.includes("stop rain");
+            if (hasBgIntent && (!directive || (!directive.toLowerCase().includes("plain") && !directive.toLowerCase().includes("solid")))) {
+              directive = directive ? `${directive}; ${editText}` : editText;
+            }
+          }
           if (data.updatedDescription) updatedDescription = data.updatedDescription;
           if (data.reply) aiReply = data.reply;
 
@@ -657,7 +672,7 @@ export default function VizzyStudioPage() {
 
       {!isPlaceholderProject(project) ? (
         <>
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
             <ChatPanel
               messages={messages}
               currentBeat={currentBeat}
@@ -672,6 +687,7 @@ export default function VizzyStudioPage() {
               displayMode={project.displayMode}
               aspectRatio={project.styleBible.aspectRatio}
               artStyle={project.styleBible.artStyle}
+              defaultSpeaker={project.characters[0]?.name || "Narrator"}
               onUpdateCaptions={(captions: CaptionOverlay[]) => updateCurrentBeat({ captions })}
               onSelectVersionUrl={handleSelectVersion}
               onToggleLockBeat={() => updateCurrentBeat({ isLocked: !currentBeat.isLocked })}

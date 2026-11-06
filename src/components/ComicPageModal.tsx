@@ -22,6 +22,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
   const [layout, setLayout] = useState<ComicLayoutMode>("manga_dynamic");
   const [showBubbles, setShowBubbles] = useState(true);
   const [zoom, setZoom] = useState<number>(100);
+  const [paperTheme, setPaperTheme] = useState<"dark" | "paper">("dark");
 
   if (!isOpen) return null;
 
@@ -98,30 +99,30 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
       {/* Top Studio Bar */}
-      <div className="h-16 px-6 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+      <div className="h-16 px-4 sm:px-6 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between gap-3 print:hidden">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center flex-shrink-0">
             <BookOpen className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-              {project.title} — Comic Page &amp; Storyboard Sheet
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+          <div className="min-w-0">
+            <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 truncate">
+              <span className="truncate">{project.title}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-bold border border-zinc-700 flex-shrink-0">
                 {project.beats.length} Panels
               </span>
             </h2>
-            <p className="text-[11px] text-zinc-400">
-              Switch layouts (Manga, Classic Grid, Webtoon, Storyboard Sheet), toggle bubbles, or print/export to PDF &amp; HTML
+            <p className="text-[11px] text-zinc-400 truncate hidden sm:block">
+              Switch comic layouts, toggle speech bubbles, or export to PDF &amp; HTML
             </p>
           </div>
         </div>
 
         {/* Layout Selector Pills */}
-        <div className="hidden lg:flex items-center gap-1.5 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+        <div className="hidden lg:flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 flex-shrink-0">
           <button
             onClick={() => setLayout("manga_dynamic")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              layout === "manga_dynamic" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+              layout === "manga_dynamic" ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
@@ -130,7 +131,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
           <button
             onClick={() => setLayout("classic_grid")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              layout === "classic_grid" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+              layout === "classic_grid" ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
@@ -139,7 +140,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
           <button
             onClick={() => setLayout("webtoon_strip")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              layout === "webtoon_strip" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+              layout === "webtoon_strip" ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
             }`}
           >
             <ScrollText className="w-3.5 h-3.5" />
@@ -148,7 +149,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
           <button
             onClick={() => setLayout("storyboard_sheet")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              layout === "storyboard_sheet" ? "bg-amber-500 text-black" : "text-zinc-400 hover:text-white"
+              layout === "storyboard_sheet" ? "bg-zinc-100 text-zinc-950 shadow-sm" : "text-zinc-400 hover:text-white"
             }`}
           >
             <Clapperboard className="w-3.5 h-3.5" />
@@ -156,8 +157,17 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
           </button>
         </div>
 
-        {/* Right Controls: Zoom, Bubbles Toggle, Print PDF, Export HTML */}
-        <div className="flex items-center gap-2">
+        {/* Right Controls: Paper Theme, Zoom, Bubbles Toggle, Print PDF, Export HTML */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Paper Theme Toggle */}
+          <button
+            onClick={() => setPaperTheme((t) => (t === "dark" ? "paper" : "dark"))}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-medium text-zinc-300 cursor-pointer transition-colors"
+            title="Toggle between Dark Studio theme and Classic White Print Paper"
+          >
+            <span>{paperTheme === "dark" ? "🌙 Dark" : "📄 Paper"}</span>
+          </button>
+
           <button
             onClick={() => setZoom((z) => Math.max(75, z - 15))}
             className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 cursor-pointer"
@@ -165,7 +175,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <span className="text-xs font-mono text-zinc-400 w-10 text-center">{zoom}%</span>
+          <span className="text-xs font-mono text-zinc-400 w-9 text-center">{zoom}%</span>
           <button
             onClick={() => setZoom((z) => Math.min(130, z + 15))}
             className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 cursor-pointer"
@@ -179,25 +189,25 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-200 cursor-pointer"
           >
             {showBubbles ? <Eye className="w-3.5 h-3.5 text-emerald-400" /> : <EyeOff className="w-3.5 h-3.5 text-zinc-500" />}
-            <span>Bubbles</span>
+            <span className="hidden sm:inline">Bubbles</span>
           </button>
 
           <button
             onClick={handlePrintPdf}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-100 cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-bold text-zinc-200 cursor-pointer"
             title="Print or Save as PDF"
           >
-            <Printer className="w-3.5 h-3.5 text-amber-400" />
-            <span>Print / PDF</span>
+            <Printer className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="hidden sm:inline">Print / PDF</span>
           </button>
 
           <button
             onClick={handleDownloadHtmlComic}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-bold cursor-pointer transition-colors"
             title="Download full Comic Page file"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Page</span>
+            <span className="hidden sm:inline">Export Page</span>
           </button>
 
           <button
@@ -210,22 +220,24 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
       </div>
 
       {/* Scrollable Comic Page Canvas */}
-      <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-zinc-950">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-zinc-950">
         <div
           style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
           className={`transition-transform duration-200 ${
             layout === "webtoon_strip"
-              ? "w-full max-w-2xl bg-zinc-900 border-4 border-black p-6 shadow-2xl"
+              ? "w-full max-w-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl"
               : layout === "storyboard_sheet"
               ? "w-full max-w-6xl bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-2xl"
+              : paperTheme === "dark"
+              ? "w-full max-w-5xl bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-2xl p-6 shadow-2xl print:bg-white print:text-black print:border-black"
               : "w-full max-w-5xl bg-white text-black border-4 border-black p-6 shadow-[0_25px_70px_rgba(0,0,0,0.85)]"
           }`}
         >
           {/* Comic Page Header Banner */}
           <div
             className={`flex items-baseline justify-between pb-3 mb-5 ${
-              layout === "storyboard_sheet" || layout === "webtoon_strip"
-                ? "border-b border-zinc-700 text-white"
+              layout === "storyboard_sheet" || layout === "webtoon_strip" || paperTheme === "dark"
+                ? "border-b border-zinc-800 text-zinc-100"
                 : "border-b-4 border-black text-black"
             }`}
           >
@@ -278,6 +290,8 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                   className={`group relative overflow-hidden cursor-pointer ${
                     layout === "storyboard_sheet"
                       ? "rounded-xl border border-zinc-700 bg-zinc-950 flex flex-col"
+                      : paperTheme === "dark"
+                      ? `${spanClass} rounded-xl border border-zinc-800 bg-black shadow-lg`
                       : `${spanClass} border-[3.5px] border-black bg-black shadow-[4px_4px_0px_rgba(0,0,0,1)]`
                   }`}
                 >
@@ -289,8 +303,8 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                       className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
                     />
 
-                    {/* Panel Number Badge */}
-                    <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/85 text-amber-400 font-black text-[10px] uppercase border border-amber-500/40">
+                    {/* Panel Number Badge (Positioned at bottom-left corner so it never collides with top narration) */}
+                    <div className="absolute bottom-2 left-2 z-10 px-2 py-0.5 bg-black/85 backdrop-blur-sm text-amber-400 font-black text-[10px] uppercase border border-amber-500/40 rounded shadow-md pointer-events-none">
                       Panel #{idx + 1} • {beat.title}
                     </div>
 

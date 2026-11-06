@@ -23,6 +23,7 @@ interface CanvasStageProps {
   displayMode: "comic" | "cinematic";
   aspectRatio: string;
   artStyle: string;
+  defaultSpeaker?: string;
   onUpdateCaptions: (captions: CaptionOverlay[]) => void;
   onSelectVersionUrl: (url: string) => void;
   onToggleLockBeat: () => void;
@@ -118,6 +119,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   currentBeat,
   displayMode,
   artStyle,
+  defaultSpeaker = "Narrator",
   onUpdateCaptions,
   onSelectVersionUrl,
   onToggleLockBeat,
@@ -125,7 +127,14 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   onAddEditedVersion
 }) => {
   const [newSpeechText, setNewSpeechText] = useState("");
-  const [speakerName, setSpeakerName] = useState("Captain Miller");
+  const [speakerName, setSpeakerName] = useState(defaultSpeaker);
+
+  // Keep speaker name synced when active cast changes
+  useEffect(() => {
+    if (defaultSpeaker && defaultSpeaker !== "Narrator") {
+      setSpeakerName(defaultSpeaker);
+    }
+  }, [defaultSpeaker]);
   const [bubbleType, setBubbleType] = useState<CaptionOverlay["type"]>("speech");
   const [activeDirectorTab, setActiveDirectorTab] = useState<string>("Emotion");
   const [isAddingBubble, setIsAddingBubble] = useState(false);

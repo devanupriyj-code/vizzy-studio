@@ -77,14 +77,13 @@ export const ProjectHubModal: React.FC<ProjectHubModalProps> = ({
             >
               Sign out
             </button>
-            {hasActiveUserProject && (
-              <button
-                onClick={onClose}
-                className="w-7 h-7 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={onClose}
+              className="w-7 h-7 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 flex items-center justify-center cursor-pointer transition-colors"
+              title="Close Projects"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

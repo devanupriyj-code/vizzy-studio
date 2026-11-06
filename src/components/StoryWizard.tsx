@@ -394,7 +394,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ isOpen, onClose, onCom
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. D-Day: The Longest Morning"
+                  placeholder="e.g. Protocol: Zero Hour or The Shadow Key"
                   className={inputCls}
                 />
               </div>
@@ -407,7 +407,7 @@ export const StoryWizard: React.FC<StoryWizardProps> = ({ isOpen, onClose, onCom
                   rows={8}
                   value={story}
                   onChange={(e) => setStory(e.target.value)}
-                  placeholder="Paste the full script or write high-level notes. e.g. June 6, 1944. Captain Miller and his squad approach Omaha Beach in a landing craft..."
+                  placeholder="Paste your script or high-level outline. e.g. Ren, a cyber-detective, navigates the neon-soaked alleys of Neo-Tokyo searching for an encrypted holodrive..."
                   className={inputCls}
                 />
                 <p className="text-[10px] text-zinc-500 mt-1">{story.trim().split(/\s+/).filter(Boolean).length} words</p>
