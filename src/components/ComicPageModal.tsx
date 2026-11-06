@@ -102,7 +102,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md animate-in fade-in duration-200 print:static print:inset-auto print:z-auto print:h-auto print:min-h-0 print:w-full print:bg-white print:overflow-visible print:block">
       {/* Top Studio Bar */}
       <div className="h-16 px-4 sm:px-6 border-b border-zinc-800 bg-zinc-950 flex items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-3 min-w-0">
@@ -225,10 +225,10 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
       </div>
 
       {/* Scrollable Comic Page Canvas */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-zinc-950">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-zinc-950 print:overflow-visible print:h-auto print:min-h-0 print:p-0 print:bg-white print:block">
         <div
           style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
-          className={`transition-transform duration-200 ${
+          className={`transition-transform duration-200 print:transform-none print:w-full print:max-w-none print:shadow-none print:border-none print:p-0 print:bg-white print:text-black ${
             layout === "webtoon_strip"
               ? "w-full max-w-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl"
               : layout === "storyboard_sheet"
@@ -288,7 +288,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                     }
                   }}
                   title="Click panel to jump to this scene in the Studio Editor"
-                  className={`group relative overflow-hidden cursor-pointer ${
+                  className={`group relative overflow-hidden cursor-pointer print:break-inside-avoid print:page-break-inside-avoid print:shadow-none ${
                     layout === "storyboard_sheet"
                       ? "rounded-xl border border-zinc-700 bg-zinc-950 flex flex-col"
                       : paperTheme === "dark"

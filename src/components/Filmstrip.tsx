@@ -27,7 +27,7 @@ export const Filmstrip: React.FC<FilmstripProps> = ({
   onMoveBeat
 }) => {
   return (
-    <div className="h-28 border-t border-zinc-800 bg-zinc-950/90 px-6 py-2 flex items-center gap-3 z-10 overflow-x-auto select-none">
+    <div className="h-28 border-t border-zinc-800 bg-zinc-950/90 px-6 py-2 flex items-center gap-3 z-10 overflow-x-auto select-none print:hidden">
       <div className="flex items-center gap-2 pr-2 border-r border-zinc-800/80 text-zinc-500 flex-shrink-0">
         <Film className="w-4 h-4 text-zinc-400" />
         <div className="flex flex-col">

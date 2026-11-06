@@ -251,7 +251,7 @@ export const SweetBunny: React.FC<SweetBunnyProps> = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className={`fixed select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"} group ${isModalOpen ? "z-[60]" : "z-40"}`}
+        className={`fixed select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"} group ${isModalOpen ? "z-[60]" : "z-40"} print:hidden`}
         title="Drag me anywhere or click to chat!"
       >
         {/* Soft speech bubble hint floating above bunny (always unmirrored and clamped within viewport) */}
@@ -363,7 +363,7 @@ export const SweetBunny: React.FC<SweetBunnyProps> = ({
             right: "24px",
             bottom: "24px",
           }}
-          className="fixed z-50 w-80 sm:w-96 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="fixed z-50 w-80 sm:w-96 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 print:hidden"
         >
           {/* Header */}
           <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/60">

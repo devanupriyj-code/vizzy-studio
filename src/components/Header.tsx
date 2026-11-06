@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <header className="h-13 border-b border-zinc-800/90 bg-zinc-950 px-4 flex items-center justify-between z-20">
+    <header className="h-13 border-b border-zinc-800/90 bg-zinc-950 px-4 flex items-center justify-between z-20 print:hidden">
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onOpenProjectHub}

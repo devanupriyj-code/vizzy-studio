@@ -662,7 +662,7 @@ export default function VizzyStudioPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-100 font-sans print:h-auto print:w-auto print:overflow-visible print:bg-white print:text-black">
       <Header
         project={project}
         onOpenCharacterLocker={() => setIsLockerOpen(true)}
@@ -684,7 +684,7 @@ export default function VizzyStudioPage() {
 
       {!isPlaceholderProject(project) ? (
         <>
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden print:hidden">
             <ChatPanel
               messages={messages}
               currentBeat={currentBeat}
@@ -720,7 +720,7 @@ export default function VizzyStudioPage() {
           />
         </>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center print:hidden">
           <p className="text-sm font-medium text-zinc-300">No storyboard open</p>
           <p className="text-xs text-zinc-500 mt-1 mb-4">
             Create a new storyboard to start generating scenes.

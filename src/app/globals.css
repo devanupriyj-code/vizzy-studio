@@ -40,3 +40,74 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Print Styles for Multi-Page PDF & Comic Export */
+@media print {
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body > div,
+  #__next,
+  .h-screen,
+  .w-screen {
+    height: auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  /* Force hide all background studio chrome and floating companion */
+  header,
+  nav,
+  .print\:hidden,
+  [title*="Drag me anywhere"],
+  [title*="Studio Bunny"] {
+    display: none !important;
+  }
+
+  /* Unfix modal container into natural static flow */
+  .fixed.inset-0 {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+  }
+
+  .overflow-y-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Disable zoom scaling during print so browser can paginate */
+  div[style*="scale("] {
+    transform: none !important;
+  }
+
+  /* Prevent awkward panel cuts across pages */
+  .panel,
+  [title*="Click panel to jump"],
+  .aspect-video,
+  .aspect-\[21\/9\] {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 14px !important;
+  }
+
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+}
