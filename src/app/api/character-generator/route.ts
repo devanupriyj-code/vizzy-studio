@@ -1,45 +1,36 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-
-const GEMINI_MODELS = [
-  "gemini-3-flash-preview",
-  "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite-preview"
-];
+import {
+  cleanJsonExtract,
+  isRateLimitError,
+  sleep,
+  GEMINI_FALLBACK_MODELS
+} from "@/lib/api-resilience";
 
 export async function POST(req: Request) {
-  try {
-    const { prompt, mode, existingCharacter, artStyle } = (await req.json()) as {
-      prompt: string;
-      mode?: "create" | "modify";
-      existingCharacter?: {
-        name: string;
-        role: string;
-        age: string;
-        hairAndEyes: string;
-        facialFeatures: string;
-        currentAttire: string;
-        customSvg?: string;
-        customColors?: {
-          hair?: string;
-          hairHighlight?: string;
-          eye?: string;
-          skin?: string;
-          outfitPrimary?: string;
-          outfitSecondary?: string;
-        };
-      };
-      artStyle?: string;
-    };
+  let prompt = "";
+  let mode: "create" | "modify" = "create";
+  let existingCharacter: any = undefined;
+  let artStyle = "Graphic Novel";
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey && !apiKey.includes("your_gemini")) {
-      const ai = new GoogleGenAI({ apiKey });
-      const sysPrompt = `You are Vizzy's AI Character Designer & Vector Rig Artist. ${
-        mode === "modify" && existingCharacter
-          ? `Modify this existing character (${JSON.stringify(existingCharacter)}) based on the user's instruction: "${prompt}". Keep all existing traits that the user did NOT ask to change, and apply the user's requested changes.`
-          : `Create a new character based on the user's description: "${prompt}" in style "${artStyle || "Graphic Novel"}".`
-      }
+  try {
+    const body = await req.json().catch(() => ({}));
+    prompt = String(body?.prompt || "").trim();
+    mode = body?.mode === "modify" ? "modify" : "create";
+    existingCharacter = body?.existingCharacter;
+    artStyle = String(body?.artStyle || "Graphic Novel").trim();
+  } catch {
+    // Keep safe defaults
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey && !apiKey.includes("your_gemini") && prompt) {
+    const ai = new GoogleGenAI({ apiKey });
+    const sysPrompt = `You are Vizzy's AI Character Designer & Vector Rig Artist. ${
+      mode === "modify" && existingCharacter
+        ? `Modify this existing character (${JSON.stringify(existingCharacter)}) based on the user's instruction: "${prompt}". Keep all existing traits that the user did NOT ask to change, and apply the user's requested changes.`
+        : `Create a new character based on the user's description: "${prompt}" in style "${artStyle}".`
+    }
 
 1. Built-in Rig Keywords (include matching keywords in hairAndEyes, facialFeatures, and currentAttire):
 - Hair/Headgear: spiky, long, ponytail, twin tails, bob cut, undercut, braided, slicked back, messy, buzz cut, afro, mohawk, hooded, helmet, visor helm, crown, cowboy hat, wizard hat, top hat, pirate hat, baseball cap, headphones, horns, antlers, halo, cat ears, elf ears, antennae
@@ -106,57 +97,67 @@ Return ONLY valid JSON matching this exact structure:
   ]
 }`;
 
-      for (const model of GEMINI_MODELS) {
-        try {
-          const res = await ai.models.generateContent({
+    for (const model of GEMINI_FALLBACK_MODELS) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 9500);
+
+        const res = await Promise.race([
+          ai.models.generateContent({
             model,
             contents: sysPrompt,
             config: { responseMimeType: "application/json" }
-          });
-          const parsed = JSON.parse(res.text || "{}");
-          if (parsed.character?.name) {
-            return NextResponse.json(parsed);
-          }
-        } catch {
-          // try next model
+          }),
+          new Promise<never>((_, reject) => {
+            controller.signal.addEventListener("abort", () => reject(new Error("Timeout")));
+          })
+        ]).finally(() => clearTimeout(timer));
+
+        const parsed = cleanJsonExtract<any>(res.text);
+        if (parsed?.character?.name) {
+          return NextResponse.json(parsed);
         }
+      } catch (err: any) {
+        if (isRateLimitError(err)) {
+          console.warn(`[character-generator] 429 Rate Limit on ${model}, auto-failing over...`);
+          await sleep(150);
+        }
+        // try next model
       }
     }
-
-    // Offline fallback parser (smart merge for modify mode)
-    const nameMatch = prompt.match(/(?:named|called)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i);
-    const name = nameMatch?.[1] || existingCharacter?.name || "Vex";
-
-    let nextHairAndEyes = existingCharacter?.hairAndEyes || prompt;
-    let nextFacial = existingCharacter?.facialFeatures || prompt;
-    let nextAttire = existingCharacter?.currentAttire || prompt;
-
-    if (mode === "modify" && existingCharacter) {
-      // Append the user's instruction across the relevant traits so deriveCharacterRig + buildProceduralUnstoredLayers picks up every keyword
-      nextHairAndEyes = `${prompt}; ${existingCharacter.hairAndEyes}`;
-      nextFacial = `${prompt}, ${existingCharacter.facialFeatures}`;
-      nextAttire = `${prompt}, ${existingCharacter.currentAttire}`;
-    }
-
-    const base = {
-      name,
-      role: existingCharacter?.role || "Story Operative",
-      age: existingCharacter?.age || "28",
-      hairAndEyes: nextHairAndEyes,
-      facialFeatures: nextFacial,
-      currentAttire: nextAttire,
-      customSvg: existingCharacter?.customSvg || ""
-    };
-    return NextResponse.json({
-      character: base,
-      variants: [
-        { label: "Look 1", hairAndEyes: nextHairAndEyes, facialFeatures: nextFacial, attire: nextAttire },
-        { label: "Look 2", hairAndEyes: `spiky ${nextHairAndEyes}`, facialFeatures: `scar, ${nextFacial}`, attire: `dark trench coat, ${nextAttire}` },
-        { label: "Look 3", hairAndEyes: `long ${nextHairAndEyes}`, facialFeatures: `cyber visor, ${nextFacial}`, attire: `crimson cyber jacket, ${nextAttire}` },
-        { label: "Look 4", hairAndEyes: `hooded ${nextHairAndEyes}`, facialFeatures: `tactical mask, ${nextFacial}`, attire: `black stealth suit, ${nextAttire}` }
-      ]
-    });
-  } catch {
-    return NextResponse.json({ error: "Failed to generate character" }, { status: 500 });
   }
+
+  // Offline fallback parser (smart merge for modify mode)
+  const nameMatch = prompt.match(/(?:named|called)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/i);
+  const name = nameMatch?.[1] || existingCharacter?.name || (prompt.length > 2 ? prompt.split(/\s+/)[0] : "Operative");
+
+  let nextHairAndEyes = existingCharacter?.hairAndEyes || prompt || "short dark hair, brown eyes";
+  let nextFacial = existingCharacter?.facialFeatures || prompt || "sharp determined features";
+  let nextAttire = existingCharacter?.currentAttire || prompt || "dark trench coat";
+
+  if (mode === "modify" && existingCharacter) {
+    nextHairAndEyes = `${prompt}; ${existingCharacter.hairAndEyes}`;
+    nextFacial = `${prompt}, ${existingCharacter.facialFeatures}`;
+    nextAttire = `${prompt}, ${existingCharacter.currentAttire}`;
+  }
+
+  const base = {
+    name,
+    role: existingCharacter?.role || "Story Operative",
+    age: existingCharacter?.age || "28",
+    hairAndEyes: nextHairAndEyes,
+    facialFeatures: nextFacial,
+    currentAttire: nextAttire,
+    customSvg: existingCharacter?.customSvg || ""
+  };
+
+  return NextResponse.json({
+    character: base,
+    variants: [
+      { label: "Look 1", hairAndEyes: nextHairAndEyes, facialFeatures: nextFacial, attire: nextAttire },
+      { label: "Look 2", hairAndEyes: `spiky ${nextHairAndEyes}`, facialFeatures: `scar, ${nextFacial}`, attire: `dark trench coat, ${nextAttire}` },
+      { label: "Look 3", hairAndEyes: `long ${nextHairAndEyes}`, facialFeatures: `cyber visor, ${nextFacial}`, attire: `crimson cyber jacket, ${nextAttire}` },
+      { label: "Look 4", hairAndEyes: `hooded ${nextHairAndEyes}`, facialFeatures: `tactical mask, ${nextFacial}`, attire: `black stealth suit, ${nextAttire}` }
+    ]
+  });
 }

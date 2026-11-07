@@ -76,6 +76,7 @@ export default function VizzyStudioPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isProjectHubOpen, setIsProjectHubOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"canvas" | "chat">("canvas");
 
   const hydrateProject = (raw: Project): Project => {
     const refreshedChars = (raw.characters || []).map((c) => ({
@@ -286,19 +287,28 @@ export default function VizzyStudioPage() {
 
   /** Create a new version of the current scene, applying accumulated edits via AI-directed Layered Compositor. */
   const renderEdit = async (editText?: string) => {
-    let directive = accumulatedEdits(currentBeat, editText);
+    // Normalize typos e.g. "yhe" -> "the", "bg" -> "background"
+    const cleanEditText = editText
+      ? editText
+          .replace(/\byhe\b/gi, "the")
+          .replace(/\bbg\b/gi, "background")
+          .replace(/\bback ground\b/gi, "background")
+          .trim()
+      : undefined;
+
+    let directive = accumulatedEdits(currentBeat, cleanEditText);
     let updatedDescription = currentBeat.userPromptDescription;
     let updatedCharacters = project.characters;
     let updatedCaptions = currentBeat.captions;
     let aiReply: string | undefined;
 
-    if (editText) {
+    if (cleanEditText) {
       try {
         const res = await fetch("/api/scene-editor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userInstruction: editText,
+            userInstruction: cleanEditText,
             currentSceneTitle: currentBeat.title,
             currentSceneDescription: currentBeat.userPromptDescription,
             currentEditDirective: accumulatedEdits(currentBeat),
@@ -315,19 +325,21 @@ export default function VizzyStudioPage() {
           const data = await res.json();
           if (data.updatedDirective) {
             directive = data.updatedDirective;
-            // Guard: If user explicitly asked for a plain/solid/flat background, clear weather, or specific color, preserve raw intent keywords if the AI response stripped them
-            const raw = (editText || "").toLowerCase();
-            const hasBgIntent =
-              raw.includes("plain") ||
-              raw.includes("solid") ||
-              raw.includes("flat") ||
-              raw.includes("background") ||
-              raw.includes("no rain") ||
-              raw.includes("remove rain") ||
-              raw.includes("stop rain");
-            if (hasBgIntent && (!directive || (!directive.toLowerCase().includes("plain") && !directive.toLowerCase().includes("solid")))) {
-              directive = directive ? `${directive}; ${editText}` : editText;
-            }
+          }
+          // Guard: If user explicitly asked for a plain/solid/flat background, clear weather, or specific color, preserve raw intent keywords
+          const raw = (cleanEditText || "").toLowerCase();
+          const hasBgIntent =
+            raw.includes("plain") ||
+            raw.includes("solid") ||
+            raw.includes("flat") ||
+            raw.includes("background") ||
+            raw.includes("backdrop") ||
+            raw.includes("no rain") ||
+            raw.includes("remove rain") ||
+            raw.includes("stop rain") ||
+            /\b(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\b/.test(raw);
+          if (hasBgIntent) {
+            directive = directive ? `${directive}; ${cleanEditText}` : cleanEditText;
           }
           if (data.updatedDescription) updatedDescription = data.updatedDescription;
           if (data.reply) aiReply = data.reply;
@@ -684,28 +696,59 @@ export default function VizzyStudioPage() {
 
       {!isPlaceholderProject(project) ? (
         <>
+          {/* Mobile Tab Segmented Switcher (< lg) */}
+          <div className="lg:hidden flex items-center justify-center p-2 bg-zinc-950 border-b border-zinc-800 print:hidden flex-shrink-0">
+            <div className="flex bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 text-xs font-medium w-full max-w-xs">
+              <button
+                onClick={() => setMobileTab("canvas")}
+                className={`flex-1 py-1.5 rounded-md text-center transition-colors cursor-pointer ${
+                  mobileTab === "canvas"
+                    ? "bg-zinc-100 text-zinc-950 font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                🎨 Canvas Stage
+              </button>
+              <button
+                onClick={() => setMobileTab("chat")}
+                className={`flex-1 py-1.5 rounded-md text-center transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                  mobileTab === "chat"
+                    ? "bg-zinc-100 text-zinc-950 font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                💬 Director Chat
+                {isLoading && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />}
+              </button>
+            </div>
+          </div>
+
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden print:hidden">
-            <ChatPanel
-              messages={messages}
-              currentBeat={currentBeat}
-              onSendMessage={handleSendMessage}
-              onRerollCurrent={() => handleSendMessage("Re-render")}
-              onSelectVersion={handleSelectVersion}
-              isLoading={isLoading}
-            />
-            <CanvasStage
-              key={`${currentBeat.id}-${currentBeat.currentImageUrl}`}
-              currentBeat={currentBeat}
-              displayMode={project.displayMode}
-              aspectRatio={project.styleBible.aspectRatio}
-              artStyle={project.styleBible.artStyle}
-              defaultSpeaker={project.characters[0]?.name || "Narrator"}
-              onUpdateCaptions={(captions: CaptionOverlay[]) => updateCurrentBeat({ captions })}
-              onSelectVersionUrl={handleSelectVersion}
-              onToggleLockBeat={() => updateCurrentBeat({ isLocked: !currentBeat.isLocked })}
-              onQuickDirectLayer={handleQuickDirectLayer}
-              onAddEditedVersion={handleAddEditedVersion}
-            />
+            <div className={`h-full ${mobileTab === "chat" ? "flex flex-col flex-1" : "hidden"} lg:flex lg:flex-col lg:flex-shrink-0`}>
+              <ChatPanel
+                messages={messages}
+                currentBeat={currentBeat}
+                onSendMessage={handleSendMessage}
+                onRerollCurrent={() => handleSendMessage("Re-render")}
+                onSelectVersion={handleSelectVersion}
+                isLoading={isLoading}
+              />
+            </div>
+            <div className={`h-full ${mobileTab === "canvas" ? "flex flex-col flex-1" : "hidden"} lg:flex lg:flex-col lg:flex-1 min-w-0`}>
+              <CanvasStage
+                key={`${currentBeat.id}-${currentBeat.currentImageUrl}`}
+                currentBeat={currentBeat}
+                displayMode={project.displayMode}
+                aspectRatio={project.styleBible.aspectRatio}
+                artStyle={project.styleBible.artStyle}
+                defaultSpeaker={project.characters[0]?.name || "Narrator"}
+                onUpdateCaptions={(captions: CaptionOverlay[]) => updateCurrentBeat({ captions })}
+                onSelectVersionUrl={handleSelectVersion}
+                onToggleLockBeat={() => updateCurrentBeat({ isLocked: !currentBeat.isLocked })}
+                onQuickDirectLayer={handleQuickDirectLayer}
+                onAddEditedVersion={handleAddEditedVersion}
+              />
+            </div>
           </div>
 
           <Filmstrip

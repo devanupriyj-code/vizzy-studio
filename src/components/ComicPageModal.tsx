@@ -43,7 +43,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                   (c) => `
           <div class="bubble ${c.type}" style="${
                     c.type === "narration"
-                      ? `left:${Math.max(22, Math.min(78, c.xPercent))}%;top:10px;transform:translateX(-50%);`
+                      ? `left:${Math.max(22, Math.min(78, c.xPercent))}%;top:14px;transform:translateX(-50%);`
                       : `left:${Math.max(18, Math.min(82, c.xPercent))}%;top:${Math.max(24, Math.min(76, c.yPercent))}%;transform:translate(-50%,-50%);`
                   }">
             ${c.speaker && c.type !== "narration" && c.type !== "sfx" ? `<div class="speaker">${c.speaker}:</div>` : ""}
@@ -321,7 +321,7 @@ export const ComicPageModal: React.FC<ComicPageModalProps> = ({
                                 isNarration
                                   ? {
                                       left: `${Math.max(22, Math.min(78, cap.xPercent))}%`,
-                                      top: "10px",
+                                      top: "14px",
                                     }
                                   : {
                                       left: `${Math.max(18, Math.min(82, cap.xPercent))}%`,

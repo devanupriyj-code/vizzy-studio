@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import {
+  cleanJsonExtract,
+  isRateLimitError,
+  sleep,
+  GEMINI_FALLBACK_MODELS
+} from "@/lib/api-resilience";
 
-const TEXT_MODELS = [
-  "gemini-3-flash-preview",
-  "gemini-2.5-flash",
-  "gemini-2.0-flash"
-];
+const TEXT_MODELS = GEMINI_FALLBACK_MODELS;
 
 const IMAGE_MODELS = [
   "gemini-2.0-flash-preview-image-generation",
@@ -243,22 +245,37 @@ Return ONLY valid JSON with this structure:
 
       for (const model of TEXT_MODELS) {
         try {
-          const res = await ai.models.generateContent({
-            model,
-            contents: svgSystemPrompt,
-            config: { responseMimeType: "application/json" }
-          });
-          const parsed = JSON.parse(res.text || "{}");
-          const combinedSvg = [proceduralSvg, parsed.sceneSvg].filter(Boolean).join("\n");
-          const injectedUri = injectSvgOverlayIntoDataUri(currentImageUrl, combinedSvg);
-          return NextResponse.json({
-            editedImageUrl: injectedUri || currentImageUrl,
-            sceneSvg: combinedSvg,
-            engineDirective: parsed.engineDirective || "",
-            reply: parsed.reply || `Applied edit: "${prompt}".`,
-            source: "gemini-svg"
-          });
-        } catch {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 9500);
+
+          const res = await Promise.race([
+            ai.models.generateContent({
+              model,
+              contents: svgSystemPrompt,
+              config: { responseMimeType: "application/json" }
+            }),
+            new Promise<never>((_, reject) => {
+              controller.signal.addEventListener("abort", () => reject(new Error("Timeout")));
+            })
+          ]).finally(() => clearTimeout(timer));
+
+          const parsed = cleanJsonExtract<any>(res.text);
+          if (parsed) {
+            const combinedSvg = [proceduralSvg, parsed.sceneSvg].filter(Boolean).join("\n");
+            const injectedUri = injectSvgOverlayIntoDataUri(currentImageUrl, combinedSvg);
+            return NextResponse.json({
+              editedImageUrl: injectedUri || currentImageUrl,
+              sceneSvg: combinedSvg,
+              engineDirective: parsed.engineDirective || "",
+              reply: parsed.reply || `Applied edit: "${prompt}".`,
+              source: "gemini-svg"
+            });
+          }
+        } catch (err: any) {
+          if (isRateLimitError(err)) {
+            console.warn(`[ai-image-edit] 429 Rate Limit on ${model}, auto-failing over...`);
+            await sleep(150);
+          }
           // Try next model
         }
       }

@@ -339,7 +339,7 @@ export const CharacterLockerModal: React.FC<CharacterLockerModalProps> = ({
           {activeTab === "characters" ? (
             <div className="flex-1 flex flex-col lg:flex-row gap-6 overflow-hidden">
               {/* Left Column: Character List (35% width) */}
-              <div className="w-full lg:w-80 flex flex-col border-r border-zinc-800/80 pr-6 overflow-y-auto space-y-3">
+              <div className="w-full lg:w-80 flex flex-col border-b lg:border-b-0 lg:border-r border-zinc-800/80 pb-4 lg:pb-0 lg:pr-6 overflow-y-auto space-y-3">
                 <div className="flex items-center justify-between pb-2">
                   <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                     Story Cast
@@ -774,7 +774,7 @@ export const CharacterLockerModal: React.FC<CharacterLockerModalProps> = ({
                 <label className="block text-xs font-semibold text-zinc-300 mb-2">
                   1-Click Visual Style Presets (Instantly Re-Themes Storyboard & Characters)
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 mb-4">
                   {STYLE_PRESETS.map((preset) => {
                     const isSelected = styleBible.artStyle === preset.name;
                     return (

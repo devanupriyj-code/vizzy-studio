@@ -1062,6 +1062,55 @@ export function selectBestBackground(
   return (topPool[pickIdx] || scored[sequenceIndex % scored.length]).bg;
 }
 
+export function detectPlainBackgroundColor(rawText: string): string | null {
+  const t = rawText
+    .toLowerCase()
+    .replace(/\byhe\b/g, "the")
+    .replace(/\bbg\b/g, "background")
+    .replace(/\bback ground\b/g, "background")
+    .replace(/\bcolour\b/g, "color");
+
+  // Check explicit hex color
+  const hexMatch = t.match(/#([0-9a-f]{6}|[0-9a-f]{3})\b/i);
+  if (hexMatch) return hexMatch[0];
+
+  // Check if intent is solid / plain / flat / monochrome / blank background or color change
+  const hasPlainIntent =
+    t.includes("plain") ||
+    t.includes("solid") ||
+    t.includes("flat") ||
+    t.includes("monochrome") ||
+    t.includes("blank") ||
+    /\b(make|change|set|turn)\s+(the\s+|it\s+)?background\s+(to\s+|into\s+|be\s+)?/i.test(t) ||
+    /\bbackground\s*(:|is|=)\s*/i.test(t) ||
+    /\b(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\s+(background|backdrop|canvas|stage)\b/i.test(t);
+
+  if (!hasPlainIntent) return null;
+
+  // Color mapping
+  if (t.includes("light green") || t.includes("mint") || t.includes("lime") || t.includes("pastel green") || t.includes("pale green")) return "#86efac";
+  if (t.includes("dark green") || t.includes("forest green")) return "#14532d";
+  if (t.includes("green") || t.includes("emerald")) return "#4ade80";
+  if (t.includes("light blue") || t.includes("sky blue") || t.includes("baby blue")) return "#7dd3fc";
+  if (t.includes("dark blue") || t.includes("navy")) return "#1e3a8a";
+  if (t.includes("blue") || t.includes("cobalt")) return "#60a5fa";
+  if (t.includes("cyan") || t.includes("teal") || t.includes("aqua")) return "#67e8f9";
+  if (t.includes("light gray") || t.includes("light grey") || t.includes("silver")) return "#cbd5e1";
+  if (t.includes("dark gray") || t.includes("dark grey") || t.includes("charcoal")) return "#27272a";
+  if (t.includes("gray") || t.includes("grey") || t.includes("slate")) return "#71717a";
+  if (t.includes("white") || t.includes("snow") || t.includes("blank") || t.includes("clean")) return "#f8fafc";
+  if (t.includes("black") || t.includes("pitch black")) return "#09090b";
+  if (t.includes("yellow") || t.includes("gold") || t.includes("amber")) return "#fde047";
+  if (t.includes("pink") || t.includes("rose") || t.includes("magenta")) return "#f472b6";
+  if (t.includes("purple") || t.includes("violet") || t.includes("lavender") || t.includes("plum")) return "#c084fc";
+  if (t.includes("crimson") || t.includes("ruby") || t.includes("dark red")) return "#991b1b";
+  if (t.includes("red") || t.includes("scarlet")) return "#f87171";
+  if (t.includes("orange") || t.includes("peach") || t.includes("tangerine")) return "#fb923c";
+  if (t.includes("beige") || t.includes("cream") || t.includes("warm white")) return "#fef3c7";
+
+  return "#18181b"; // default dark slate
+}
+
 export function parseSceneLayersFromText(
   beatDescription: string,
   styleBible: StyleBible,
@@ -1073,16 +1122,8 @@ export function parseSceneLayersFromText(
   const editLower = (editDirective || "").toLowerCase();
   const textPool = `${beatDescription} ${editDirective || ""}`.toLowerCase();
   // If the user's latest edit or beat requests plain background or clears weather, honor it over the initial story text
-  const isPlainBg =
-    textPool.includes("plain") ||
-    textPool.includes("solid background") ||
-    textPool.includes("flat background") ||
-    textPool.includes("plain background") ||
-    textPool.includes("solid color") ||
-    textPool.includes("monochrome background") ||
-    textPool.includes("blank background") ||
-    /\b(plain|solid|flat)\s+(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\b/.test(textPool) ||
-    /\b(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\s+background\b/.test(textPool);
+  const plainColor = detectPlainBackgroundColor(textPool);
+  const isPlainBg = Boolean(plainColor);
 
   const noRainRequested =
     textPool.includes("no rain") ||
@@ -1235,7 +1276,8 @@ export function parseSceneLayersFromText(
     vfx,
     camera,
     lighting,
-    charPlacements
+    charPlacements,
+    plainColor
   };
 }
 
@@ -1577,48 +1619,10 @@ function renderBackgroundLayerSvg(
   artStyle: string = ""
 ): string {
   const textPool = `${beatDescription || ""} ${editDirective || ""}`.toLowerCase();
-  const isPlain =
-    textPool.includes("plain") ||
-    textPool.includes("solid background") ||
-    textPool.includes("flat background") ||
-    textPool.includes("plain background") ||
-    textPool.includes("solid color") ||
-    textPool.includes("monochrome background") ||
-    textPool.includes("blank background") ||
-    /\b(plain|solid|flat)\s+(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\b/.test(textPool) ||
-    /\b(light\s+|dark\s+)?(green|white|black|yellow|cyan|teal|blue|pink|purple|red|orange|gray|grey)\s+background\b/.test(textPool);
+  const plainColor = detectPlainBackgroundColor(textPool);
 
   // If user asked for plain / solid color background
-  if (isPlain) {
-    let plainColor = "#18181b"; // default dark slate
-    if (textPool.includes("light green") || textPool.includes("mint") || textPool.includes("lime") || textPool.includes("pastel green")) {
-      plainColor = "#86efac";
-    } else if (textPool.includes("dark green") || textPool.includes("forest green")) {
-      plainColor = "#14532d";
-    } else if (textPool.includes("green") || textPool.includes("emerald")) {
-      plainColor = "#4ade80";
-    } else if (textPool.includes("white")) {
-      plainColor = "#f8fafc";
-    } else if (textPool.includes("black")) {
-      plainColor = "#09090b";
-    } else if (textPool.includes("yellow")) {
-      plainColor = "#fde047";
-    } else if (textPool.includes("cyan") || textPool.includes("teal")) {
-      plainColor = "#67e8f9";
-    } else if (textPool.includes("blue")) {
-      plainColor = "#60a5fa";
-    } else if (textPool.includes("pink")) {
-      plainColor = "#f472b6";
-    } else if (textPool.includes("purple") || textPool.includes("violet")) {
-      plainColor = "#c084fc";
-    } else if (textPool.includes("red") || textPool.includes("crimson")) {
-      plainColor = "#f87171";
-    } else if (textPool.includes("orange")) {
-      plainColor = "#fb923c";
-    } else if (textPool.includes("gray") || textPool.includes("grey")) {
-      plainColor = "#71717a";
-    }
-
+  if (plainColor) {
     return `
       <rect width="1024" height="576" fill="${plainColor}"/>
       <line x1="0" y1="520" x2="1024" y2="520" stroke="#000000" stroke-width="3" opacity="0.15"/>
@@ -2633,15 +2637,20 @@ export function composeLayeredSceneDataUri(
     parsed.vfx
   );
 
+  const isSolidBg = Boolean(parsed.plainColor);
+  const effectiveBgVfxSvg = isSolidBg ? "" : bgVfxSvg;
+  const effectiveFgWeatherSvg = isSolidBg ? "" : fgWeatherSvg;
+  const effectiveStyleOverlay = isSolidBg ? "" : styleOverlay;
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 576" width="1024" height="576">
     <defs>
       ${styleDefs}
     </defs>
     ${bgSvg}
-    ${bgVfxSvg}
+    ${effectiveBgVfxSvg}
     ${charsSvg}
-    ${fgWeatherSvg}
-    ${styleOverlay}
+    ${effectiveFgWeatherSvg}
+    ${effectiveStyleOverlay}
     <rect width="1024" height="576" fill="none" stroke="#09090b" stroke-width="14"/>
   </svg>`;
 

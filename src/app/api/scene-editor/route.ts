@@ -1,45 +1,49 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-
-const GEMINI_MODELS = [
-  "gemini-3-flash-preview",
-  "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite-preview"
-];
+import {
+  cleanJsonExtract,
+  isRateLimitError,
+  sleep,
+  GEMINI_FALLBACK_MODELS
+} from "@/lib/api-resilience";
 
 export async function POST(req: Request) {
+  let userInstruction = "";
+  let currentSceneTitle = "Scene";
+  let currentSceneDescription = "";
+  let currentEditDirective = "";
+  let characters: any[] = [];
+
   try {
-    const body = await req.json();
-    const {
-      userInstruction,
-      currentSceneTitle,
-      currentSceneDescription,
-      currentEditDirective,
-      characters
-    } = body as {
-      userInstruction: string;
-      currentSceneTitle: string;
-      currentSceneDescription: string;
-      currentEditDirective?: string;
-      characters: {
-        id: string;
-        name: string;
-        hairAndEyes: string;
-        facialFeatures: string;
-        currentAttire: string;
-      }[];
-    };
+    const body = await req.json().catch(() => ({}));
+    userInstruction = String(body?.userInstruction || "").trim();
+    currentSceneTitle = String(body?.currentSceneTitle || "Scene").trim();
+    currentSceneDescription = String(body?.currentSceneDescription || "").trim();
+    currentEditDirective = String(body?.currentEditDirective || "").trim();
+    characters = Array.isArray(body?.characters) ? body.characters : [];
+  } catch {
+    // Keep safe defaults
+  }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey.includes("your_gemini")) {
-      return NextResponse.json({
-        updatedDirective: [currentEditDirective, userInstruction].filter(Boolean).join("; "),
-        reply: `Applied your edit to ${currentSceneTitle}: "${userInstruction}".`
-      });
-    }
+  // Edge case: empty instruction
+  if (!userInstruction) {
+    return NextResponse.json({
+      updatedDirective: currentEditDirective || "",
+      updatedDescription: currentSceneDescription,
+      reply: "No edit directive was provided."
+    });
+  }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const prompt = `You are Vizzy, an AI Storyboard & Graphic Novel Director that controls a Layered Character + Background Compositor Engine.
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.includes("your_gemini")) {
+    return NextResponse.json({
+      updatedDirective: [currentEditDirective, userInstruction].filter(Boolean).join("; "),
+      updatedDescription: currentSceneDescription,
+      reply: `Applied your edit to ${currentSceneTitle}: "${userInstruction}".`
+    });
+  }
+
+  const prompt = `You are Vizzy, an AI Storyboard & Graphic Novel Director that controls a Layered Character + Background Compositor Engine.
 
 Current Scene: "${currentSceneTitle}"
 Base Scene Description: "${currentSceneDescription}"
@@ -62,7 +66,7 @@ CRITICAL INSTRUCTIONS:
 - If the user asks for a plain / solid / flat color background (e.g. "make the background plain light green", "solid white", "flat black"), "updatedDirective" MUST include the exact phrase (e.g. "plain light green background; no rain; brighter lighting") and "weather" should be "none".
 - If the user asks to remove weather (e.g. "remove rain", "no rain"), ensure "updatedDirective" includes "no rain".
 
-Return ONLY valid JSON matching this exact structure (no markdown fences):
+Return ONLY valid JSON matching this exact structure:
 {
   "updatedDirective": "A concise combined directive string containing the exact keywords needed from the engine capabilities above to fulfill the user's request",
   "updatedDescription": "Updated scene description incorporating the user's requested changes",
@@ -73,59 +77,96 @@ Return ONLY valid JSON matching this exact structure (no markdown fences):
       "facialFeatures": "updated facial features string",
       "currentAttire": "updated attire string",
       "customColors": {
-        "hair": "optional #hex if hair color changed",
-        "eye": "optional #hex if eye color changed",
-        "skin": "optional #hex if skin color changed",
-        "outfitPrimary": "optional #hex if outfit color changed"
+        "hair": "optional #hex",
+        "eye": "optional #hex",
+        "skin": "optional #hex",
+        "outfitPrimary": "optional #hex"
       },
       "customSvg": "optional raw SVG shapes (<path>, <polygon>, <circle>, <rect>, <ellipse>) in character local coordinates ((0,0)=face center, (0,-65)=top of head, (0,100)=chest, (85,10)=hand) for any unique unstored trait"
     }
   ],
   "newCharacters": [
     {
-      "name": "Name of brand-new character (ONLY include in newCharacters if the user asked to add/introduce a new character not already in Characters in Project)",
+      "name": "Name of brand-new character",
       "role": "Character's role",
       "age": "Age (e.g. 30s)",
       "hairAndEyes": "Hair style, hair color, and eye color using the engine keywords",
       "facialFeatures": "Skin tone, scar/stubble, and any accessory (visor, eyepatch, glasses, mask, headband)",
-      "currentAttire": "Outfit style, color, and weapon/prop (rifle, holodrive, blade, katana, pistol, energy orb)",
+      "currentAttire": "Outfit style, color, and weapon/prop",
       "customColors": {
         "hair": "#hex",
         "eye": "#hex",
         "skin": "#hex",
         "outfitPrimary": "#hex"
       },
-      "customSvg": "optional raw SVG shapes in character local coordinates for any unique unstored trait"
+      "customSvg": "optional raw SVG shapes"
     }
   ],
   "newBubble": {
-    "speaker": "Speaker name (only include newBubble if user asked to add dialogue/speech)",
+    "speaker": "Speaker name (only if user asked for dialogue)",
     "text": "Dialogue line"
   },
   "reply": "Short 1-sentence confirmation of what you modified on the scene"
 }`;
 
-    for (const model of GEMINI_MODELS) {
-      try {
-        const res = await ai.models.generateContent({
+  const ai = new GoogleGenAI({ apiKey });
+
+  for (const model of GEMINI_FALLBACK_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 9000);
+
+      const res = await Promise.race([
+        ai.models.generateContent({
           model,
           contents: prompt,
           config: { responseMimeType: "application/json" }
-        });
-        const parsed = JSON.parse(res.text || "{}");
-        if (parsed.updatedDirective) {
-          return NextResponse.json(parsed);
-        }
-      } catch {
-        // try next model
-      }
-    }
+        }),
+        new Promise<never>((_, reject) => {
+          controller.signal.addEventListener("abort", () => reject(new Error("Timeout")));
+        })
+      ]).finally(() => clearTimeout(timer));
 
-    return NextResponse.json({
-      updatedDirective: [currentEditDirective, userInstruction].filter(Boolean).join("; "),
-      reply: `Applied your edit to ${currentSceneTitle}: "${userInstruction}".`
-    });
-  } catch {
-    return NextResponse.json({ error: "Failed to process edit" }, { status: 500 });
+      const parsed = cleanJsonExtract<any>(res.text);
+      if (parsed && (parsed.updatedDirective || parsed.reply)) {
+        return NextResponse.json(parsed);
+      }
+    } catch (err: any) {
+      if (isRateLimitError(err)) {
+        console.warn(`[scene-editor] 429 Rate Limit on ${model}, auto-failing over...`);
+        await sleep(180);
+      }
+      // Continue to next model in fallback tier
+    }
   }
+
+  // Deterministic engine fallback: guarantees instant, non-crashing response even when 429
+  const lower = userInstruction.toLowerCase();
+  const directiveParts = [currentEditDirective].filter(Boolean);
+
+  if (lower.includes("plain") || lower.includes("solid") || lower.includes("flat") || lower.includes("background")) {
+    directiveParts.push(userInstruction);
+  }
+  if (lower.includes("no rain") || lower.includes("remove rain") || lower.includes("stop rain")) {
+    directiveParts.push("no rain");
+  }
+  if (lower.includes("darker") || lower.includes("night")) {
+    directiveParts.push("darker lighting");
+  } else if (lower.includes("bright") || lower.includes("daylight")) {
+    directiveParts.push("brighter lighting");
+  }
+  if (lower.includes("close") || lower.includes("closer")) {
+    directiveParts.push("closeup shot");
+  } else if (lower.includes("wide") || lower.includes("wider")) {
+    directiveParts.push("wide shot");
+  }
+  if (!directiveParts.includes(userInstruction)) {
+    directiveParts.push(userInstruction);
+  }
+
+  return NextResponse.json({
+    updatedDirective: directiveParts.join("; "),
+    updatedDescription: `${currentSceneDescription} (${userInstruction})`.trim(),
+    reply: `Applied your edit to ${currentSceneTitle}: "${userInstruction}".`
+  });
 }

@@ -33,17 +33,17 @@ export const Header: React.FC<HeaderProps> = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <header className="h-13 border-b border-zinc-800/90 bg-zinc-950 px-4 flex items-center justify-between z-20 print:hidden">
-      <div className="flex items-center gap-3 min-w-0">
+    <header className="h-13 border-b border-zinc-800/90 bg-zinc-950 px-2 sm:px-4 flex items-center justify-between z-20 print:hidden overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-shrink-0">
         <button
           onClick={onOpenProjectHub}
-          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md hover:bg-zinc-900 text-left transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 sm:gap-2.5 px-2 py-1.5 rounded-md hover:bg-zinc-900 text-left transition-colors cursor-pointer"
           title="Switch or manage projects"
         >
           <span className="text-xs font-semibold tracking-tight text-zinc-100">Vizzy</span>
           <span className="text-zinc-700">/</span>
-          <span className="text-xs font-medium text-zinc-300 truncate max-w-[220px]">{project.title}</span>
-          <FolderOpen className="w-3.5 h-3.5 text-zinc-500 ml-0.5" />
+          <span className="text-xs font-medium text-zinc-300 truncate max-w-[110px] sm:max-w-[220px]">{project.title}</span>
+          <FolderOpen className="w-3.5 h-3.5 text-zinc-500 ml-0.5 flex-shrink-0" />
         </button>
 
         <span className="hidden md:inline-block text-[11px] text-zinc-500 border-l border-zinc-800 pl-3 truncate max-w-[180px]">
@@ -51,10 +51,10 @@ export const Header: React.FC<HeaderProps> = ({
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
         <button
           onClick={onManualSave}
-          className="px-2.5 py-1.5 rounded-md hover:bg-zinc-900 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+          className="px-2 sm:px-2.5 py-1.5 rounded-md hover:bg-zinc-900 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
           title="Save project"
         >
           {saveStatus === "saving" ? "Saving..." : saveStatus === "saved_cloud" ? "Saved" : "Save"}
@@ -70,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
               setTimeout(() => setConfirmDelete(false), 3500);
             }
           }}
-          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer ${
+          className={`flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer ${
             confirmDelete
               ? "bg-red-600 text-white font-medium"
               : "text-zinc-400 hover:text-red-400 hover:bg-zinc-900"
@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
           {confirmDelete ? (
             <>
               <Check className="w-3.5 h-3.5" />
-              <span>Confirm delete</span>
+              <span className="hidden sm:inline">Confirm delete</span>
             </>
           ) : (
             <>
@@ -90,15 +90,16 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        <div className="h-4 w-px bg-zinc-800 mx-1" />
+        <div className="h-4 w-px bg-zinc-800 mx-0.5 sm:mx-1" />
 
         <button
           onClick={onOpenCharacterLocker}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+          title="Cast & Style Locker"
         >
           <Users className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Cast &amp; Sets</span>
-          <span className="text-[11px] text-zinc-500 ml-0.5">{project.characters.length}</span>
+          <span className="hidden sm:inline">Cast &amp; Sets</span>
+          <span className="text-[11px] text-zinc-500">{project.characters.length}</span>
         </button>
 
         <button
@@ -111,10 +112,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenComicPage && (
           <button
             onClick={onOpenComicPage}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+            title="Comic Page View"
           >
             <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Page View</span>
+            <span className="hidden sm:inline">Page View</span>
           </button>
         )}
 
@@ -128,10 +130,11 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onStartSlideshow}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold transition-colors cursor-pointer ml-1"
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold transition-colors cursor-pointer ml-0.5 sm:ml-1"
+          title="Play full slideshow"
         >
           <Play className="w-3 h-3 fill-current" />
-          <span>Preview</span>
+          <span className="hidden sm:inline">Preview</span>
         </button>
       </div>
     </header>

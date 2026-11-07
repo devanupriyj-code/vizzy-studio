@@ -39,7 +39,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800/90 w-full max-w-[360px] flex-shrink-0">
+    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800/90 w-full lg:max-w-[360px] flex-shrink-0">
       {/* Scene Header */}
       <div className="h-10 px-4 border-b border-zinc-800/80 flex items-center justify-between">
         <span className="text-xs font-medium text-zinc-200 truncate pr-2">

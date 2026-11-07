@@ -1,40 +1,93 @@
 import { NextResponse } from "next/server";
 import { Project, ChatMessage } from "@/types";
+import {
+  cleanJsonExtract,
+  isRateLimitError,
+  sleep,
+  GEMINI_FALLBACK_MODELS
+} from "@/lib/api-resilience";
+
+function buildOfflineDirectorResponse(userMessage: string, project: Project) {
+  const clean = userMessage.trim().toLowerCase();
+
+  if (clean.includes("character") || clean.includes("cast") || clean.includes("costume") || clean.includes("attire") || clean.includes("look")) {
+    return {
+      text: `I've opened our **Style & Characters** forge! Describe any character's role, face, outfit, or weapon in chat or customize them directly in Cast & Sets. All scenes you render will maintain their visual likeness.`,
+      suggestedActions: ["Open Cast & Sets", "Add New Character", "Lock Current Cast"],
+      characterAction: {
+        type: "add" as const,
+        name: "New Operative",
+        role: "Allied Specialist",
+        facialFeatures: "Sharp determined eyes, athletic build",
+        currentAttire: "Dark trench coat with tactical webbing",
+        age: "28"
+      }
+    };
+  }
+
+  if (clean.includes("light") || clean.includes("dark") || clean.includes("night") || clean.includes("neon")) {
+    return {
+      text: `Adjusting atmospheric lighting for **Scene ${project.activeBeatIndex + 1}**! We can bathe the frame in high-contrast rim light, deep shadows, or vibrant neon highlights.`,
+      suggestedActions: ["Darker lighting", "Neon cyan highlights", "Bright daylight"]
+    };
+  }
+
+  if (clean.includes("rain") || clean.includes("storm") || clean.includes("weather") || clean.includes("fog")) {
+    return {
+      text: `Atmospheric weather controls ready. I can layer cinematic rain streaks, rising ground fog, burning embers, or clear skies across this scene.`,
+      suggestedActions: ["Add rain", "Remove rain", "Add smoke & fog"]
+    };
+  }
+
+  return {
+    text: `Understood! Working on **Scene ${project.activeBeatIndex + 1}: ${project.beats[project.activeBeatIndex]?.title || "Frame"}** matching our **${project.styleBible.artStyle}** vision. Describe any change to background, cast, camera angle, or lighting.`,
+    suggestedActions: ["Next scene", "Close-up shot", "Darker lighting"]
+  };
+}
 
 export async function POST(req: Request) {
+  let userMessage = "";
+  let project: Project | any = undefined;
+  let history: ChatMessage[] = [];
+
   try {
-    const { userMessage, project, history } = (await req.json()) as {
-      userMessage: string;
-      project: Project;
-      history: ChatMessage[];
-    };
+    const body = await req.json().catch(() => ({}));
+    userMessage = String(body?.userMessage || "").trim();
+    project = body?.project;
+    history = Array.isArray(body?.history) ? body.history : [];
+  } catch {
+    // Keep safe defaults
+  }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+  if (!project) {
+    return NextResponse.json({
+      text: "No active storyboard project detected.",
+      suggestedActions: ["Create New Project"]
+    });
+  }
 
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "GEMINI_API_KEY not configured in .env.local" },
-        { status: 400 }
-      );
-    }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.includes("your_gemini") || !userMessage) {
+    return NextResponse.json(buildOfflineDirectorResponse(userMessage, project));
+  }
 
-    const systemInstruction = `You are Vizzy, an elite visual director, character designer, and graphic novel co-creator collaborating with the user.
-Project Title: "${project.title}"
-Synopsis: "${project.synopsis}"
-Active Art Style: "${project.styleBible.artStyle}"
-Lighting & Tone: "${project.styleBible.visualTone}"
-Color Palette: ${project.styleBible.colorPalette.join(", ")}
+  const systemInstruction = `You are Vizzy, an elite visual director, character designer, and graphic novel co-creator collaborating with the user.
+Project Title: "${project.title || "Untitled"}"
+Synopsis: "${project.synopsis || ""}"
+Active Art Style: "${project.styleBible?.artStyle || "Graphic Novel"}"
+Lighting & Tone: "${project.styleBible?.visualTone || "Atmospheric"}"
+Color Palette: ${Array.isArray(project.styleBible?.colorPalette) ? project.styleBible.colorPalette.join(", ") : "Default"}
 Locked Cast:
-${project.characters
+${(project.characters || [])
   .map(
-    (c) =>
-      `• ${c.name} (${c.role}): Age ${c.identity.age}, ${c.identity.facialFeatures}. Attire: ${c.currentAttire}. Locked: ${c.isLocked}`
+    (c: any) =>
+      `• ${c.name} (${c.role}): Age ${c.identity?.age || "30"}, ${c.identity?.facialFeatures || ""}. Attire: ${c.currentAttire || ""}. Locked: ${c.isLocked}`
   )
   .join("\n")}
 
-Current Beat Index: Beat ${project.activeBeatIndex + 1} of ${project.beats.length}
-Current Beat Title: "${project.beats[project.activeBeatIndex]?.title || ""}"
-Current Beat Visual Description: "${project.beats[project.activeBeatIndex]?.userPromptDescription || ""}"
+Current Beat Index: Beat ${(project.activeBeatIndex || 0) + 1} of ${project.beats?.length || 1}
+Current Beat Title: "${project.beats?.[project.activeBeatIndex]?.title || ""}"
+Current Beat Visual Description: "${project.beats?.[project.activeBeatIndex]?.userPromptDescription || ""}"
 
 Instructions for your response:
 1. Act as a supportive, visionary creative co-director.
@@ -55,67 +108,54 @@ Instructions for your response:
   }
 }`;
 
-    const conversationContents = [
-      {
-        role: "user",
-        parts: [
-          { text: systemInstruction },
-          { text: `User request: "${userMessage}"` }
-        ]
-      }
-    ];
-
-    const candidateModels = [
-      "gemini-3-flash-preview",
-      "gemini-3.5-flash-lite",
-      "gemini-3.1-flash-lite-preview"
-    ];
-
-    let lastError = "";
-
-    for (const model of candidateModels) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: conversationContents,
-            generationConfig: {
-              temperature: 0.7,
-              responseMimeType: "application/json"
-            }
-          })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          let parsedResult;
-          try {
-            parsedResult = JSON.parse(rawContent);
-          } catch {
-            parsedResult = {
-              text: rawContent || "Understood! Let's frame this panel.",
-              suggestedActions: ["Generate 4 options", "Refine lighting", "Advance to next beat"]
-            };
-          }
-          return NextResponse.json(parsedResult);
-        } else {
-          const errText = await res.text();
-          lastError = `[${model}] ${res.status}: ${errText}`;
-        }
-      } catch (err) {
-        lastError = String(err);
-      }
+  const conversationContents = [
+    {
+      role: "user",
+      parts: [
+        { text: systemInstruction },
+        { text: `User request: "${userMessage}"` }
+      ]
     }
+  ];
 
-    return NextResponse.json(
-      { error: `Could not reach Gemini models: ${lastError}` },
-      { status: 502 }
-    );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  for (const model of GEMINI_FALLBACK_MODELS) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 9500);
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: conversationContents,
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: "application/json"
+          }
+        })
+      }).finally(() => clearTimeout(timer));
+
+      if (res.status === 429) {
+        console.warn(`[vizzy-director] 429 Rate Limit on ${model}, auto-failing over...`);
+        await sleep(150);
+        continue;
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const parsed = cleanJsonExtract<any>(rawContent);
+        if (parsed?.text) {
+          return NextResponse.json(parsed);
+        }
+      }
+    } catch {
+      // try next model
+    }
   }
+
+  // Guaranteed fallback: Never return 502/500 to user
+  return NextResponse.json(buildOfflineDirectorResponse(userMessage, project));
 }
