@@ -769,7 +769,33 @@ export default function VizzyStudioPage() {
             return { ...prev, characters: updatedChars, beats: updatedBeats };
           })
         }
-        onUpdateStyleBible={(bible) => setProject((prev) => ({ ...prev, styleBible: bible }))}
+        onUpdateStyleBible={(bible) => {
+          setProject((prev) => {
+            const updatedChars = prev.characters.map((c) => ({
+              ...c,
+              identity: {
+                ...c.identity,
+                anchorPortraitUrl: renderCharacterPortraitDataUri(c, bible.artStyle)
+              }
+            }));
+            const updatedBeats = prev.beats.map((rawBeat, bIdx) => {
+              const b = normalizeBeat(rawBeat);
+              if (!b.currentImageUrl || b.currentImageUrl.startsWith("data:image/svg")) {
+                const directive = accumulatedEdits(b);
+                const dialogueContext = (b.captions || [])
+                  .filter((c) => c.text)
+                  .map((c) => `${c.speaker || ""} ${c.text}`)
+                  .join(" ");
+                const sceneContext = [b.userPromptDescription, dialogueContext].filter(Boolean).join(" ");
+                const gen = generateSingleSceneImage(sceneContext, bible, updatedChars, directive, bIdx);
+                return { ...b, currentImageUrl: gen.imageUrl, synthesizedPrompt: gen.promptUsed };
+              }
+              return b;
+            });
+            return { ...prev, styleBible: bible, characters: updatedChars, beats: updatedBeats };
+          });
+          pushVizzy(`Applied art style **${bible.artStyle}** to all scenes and characters.`);
+        }}
         onApplyBackgroundId={(bgId, bgName) => {
           renderEdit(`Switch background to ${bgId} (${bgName})`);
         }}

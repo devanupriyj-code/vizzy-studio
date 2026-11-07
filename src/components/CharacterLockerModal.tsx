@@ -12,6 +12,7 @@ import {
   CATEGORIES,
   BgCategory
 } from "@/lib/layer-compositor";
+import { STYLE_PRESETS } from "@/lib/style-presets";
 
 interface CharacterLockerModalProps {
   isOpen: boolean;
@@ -769,6 +770,56 @@ export const CharacterLockerModal: React.FC<CharacterLockerModalProps> = ({
           ) : (
             /* Style Bible Tab */
             <div className="space-y-4 max-w-2xl mx-auto py-2">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-2">
+                  1-Click Visual Style Presets (Instantly Re-Themes Storyboard & Characters)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+                  {STYLE_PRESETS.map((preset) => {
+                    const isSelected = styleBible.artStyle === preset.name;
+                    return (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() =>
+                          onUpdateStyleBible({
+                            ...styleBible,
+                            artStyle: preset.name,
+                            visualTone: preset.visualTone,
+                            lightingStyle: preset.lighting,
+                            colorPalette: preset.colors
+                          })
+                        }
+                        className={`text-left p-2.5 rounded-lg border transition-all ${
+                          isSelected
+                            ? "bg-amber-500/15 border-amber-500 ring-1 ring-amber-500/50 shadow-md"
+                            : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-zinc-100 truncate">
+                            {preset.name.split(" ")[0]} {preset.name.split(" ")[1]}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        </div>
+                        <p className="text-[10px] text-zinc-400 line-clamp-2 mb-2 leading-relaxed">
+                          {preset.visualTone}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          {preset.colors.slice(0, 5).map((c, ci) => (
+                            <span
+                              key={ci}
+                              className="w-3.5 h-3.5 rounded-full border border-black/30"
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-zinc-300 mb-1">
                   Art Style Definition

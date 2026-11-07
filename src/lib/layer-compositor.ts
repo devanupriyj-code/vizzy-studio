@@ -708,6 +708,34 @@ function hashStr(str: string): number {
   return Math.abs(h);
 }
 
+export type StyleArchetype =
+  | "manga_anime"
+  | "gritty_graphic_novel"
+  | "watercolor_storyboard"
+  | "cyberpunk_neon"
+  | "retro_comic"
+  | "film_noir";
+
+export function resolveStyleArchetype(artStyle: string = ""): StyleArchetype {
+  const s = (artStyle || "").toLowerCase();
+  if (/\b(manga|anime|shonen|seinen|chibi|webtoon|cel|studio trigger)\b/.test(s)) {
+    return "manga_anime";
+  }
+  if (/\b(watercolor|watercolour|storybook|painterly|ghibli|pastel|gouache|impressionist)\b/.test(s)) {
+    return "watercolor_storyboard";
+  }
+  if (/\b(cyberpunk|synthwave|neon noir|sci-fi|scifi|hologram|futuristic|blade runner)\b/.test(s)) {
+    return "cyberpunk_neon";
+  }
+  if (/\b(retro|pop art|vintage comic|silver age|golden age|kirby|lichtenstein|ben-day|halftone)\b/.test(s)) {
+    return "retro_comic";
+  }
+  if (/\b(noir|monochrome|black and white|b&w|chiaroscuro|shadowy|detective|sin city)\b/.test(s)) {
+    return "film_noir";
+  }
+  return "gritty_graphic_novel";
+}
+
 export function deriveCharacterRig(char: CharacterProfile, artStyle: string): CharacterRigVisuals {
   const hairEyeText = `${char.identity.hairAndEyes}`.toLowerCase();
   const faceText = `${char.identity.facialFeatures} ${char.identity.hairAndEyes}`.toLowerCase();
@@ -985,19 +1013,23 @@ export function selectBestBackground(
   const explicitMatch = BACKGROUND_CATALOG.find((b) => query.includes(b.id.toLowerCase()));
   if (explicitMatch) return explicitMatch;
 
+  const styleArch = resolveStyleArchetype(artStyle);
+
   let preferredCat: BgCategory = "modern";
-  if (query.includes("cyber") || query.includes("neon") || query.includes("sector") || query.includes("drone")) {
+  if (query.includes("cyber") || query.includes("neon") || query.includes("sector") || query.includes("drone") || styleArch === "cyberpunk_neon") {
     preferredCat = "cyberpunk";
-  } else if (query.includes("shonen") || query.includes("manga") || query.includes("anime")) {
+  } else if (query.includes("shonen") || query.includes("manga") || query.includes("anime") || styleArch === "manga_anime") {
     preferredCat = "anime";
   } else if (query.includes("wwii") || query.includes("beach") || query.includes("landing craft") || query.includes("miller") || query.includes("bunker") || query.includes("soldier") || query.includes("overlord")) {
     preferredCat = "military";
-  } else if (query.includes("noir") || query.includes("detective") || query.includes("crime")) {
+  } else if (query.includes("noir") || query.includes("detective") || query.includes("crime") || styleArch === "film_noir") {
     preferredCat = "noir";
-  } else if (query.includes("fantasy") || query.includes("castle") || query.includes("dragon") || query.includes("magic") || query.includes("throne")) {
+  } else if (query.includes("watercolor") || query.includes("storybook") || query.includes("painterly") || query.includes("fantasy") || query.includes("castle") || query.includes("dragon") || query.includes("magic") || query.includes("throne") || styleArch === "watercolor_storyboard") {
     preferredCat = "fantasy";
   } else if (query.includes("space") || query.includes("starship") || query.includes("orbit")) {
     preferredCat = "space";
+  } else if (query.includes("retro") || query.includes("pop art") || query.includes("superhero") || query.includes("metropolis") || styleArch === "retro_comic") {
+    preferredCat = "superhero";
   } else if (query.includes("wasteland") || query.includes("apocalyp") || query.includes("ruins")) {
     preferredCat = "wasteland";
   } else if (query.includes("horror") || query.includes("haunted") || query.includes("crypt")) {
@@ -1010,8 +1042,6 @@ export function selectBestBackground(
     preferredCat = "mythology";
   } else if (query.includes("western") || query.includes("cowboy") || query.includes("saloon")) {
     preferredCat = "western";
-  } else if (query.includes("superhero") || query.includes("metropolis")) {
-    preferredCat = "superhero";
   } else if (query.includes("samurai") || query.includes("shogun")) {
     preferredCat = "historical";
   }
@@ -1027,7 +1057,8 @@ export function selectBestBackground(
   }).sort((a, b) => b.score - a.score);
 
   const topPool = scored.filter((s) => s.score >= scored[0].score - 4);
-  const pickIdx = variationSeed > 0 ? variationSeed % Math.max(1, Math.min(6, topPool.length)) : 0;
+  const poolSize = Math.max(1, Math.min(6, topPool.length));
+  const pickIdx = (sequenceIndex + (variationSeed > 0 ? variationSeed : 0)) % poolSize;
   return (topPool[pickIdx] || scored[sequenceIndex % scored.length]).bg;
 }
 
@@ -1208,13 +1239,342 @@ export function parseSceneLayersFromText(
   };
 }
 
+export function generateStyleDefsSvg(style: StyleArchetype, uid: string): string {
+  switch (style) {
+    case "manga_anime":
+      return `
+        <!-- Manga / Anime Screentone Dots & Action Accents -->
+        <pattern id="screentone_${uid}" width="5" height="5" patternUnits="userSpaceOnUse">
+          <circle cx="2.5" cy="2.5" r="0.9" fill="#000000" opacity="0.16"/>
+        </pattern>
+        <radialGradient id="animeStarburst_${uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+          <stop offset="60%" stop-color="#38bdf8" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#1e1b4b" stop-opacity="0"/>
+        </radialGradient>
+      `;
+
+    case "watercolor_storyboard":
+      return `
+        <!-- Fluid Watercolor Dispersion & Warm Sun Radiance -->
+        <filter id="wcFilter_${uid}" x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.8" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <radialGradient id="wcSunGlow_${uid}" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fde047" stop-opacity="0.75"/>
+          <stop offset="45%" stop-color="#fb923c" stop-opacity="0.32"/>
+          <stop offset="100%" stop-color="#ea580c" stop-opacity="0"/>
+        </radialGradient>
+      `;
+
+    case "cyberpunk_neon":
+      return `
+        <!-- Cyberpunk Neon Light Bloom & Hologram Ground Grid -->
+        <filter id="neonBloom_${uid}" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3.5" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <pattern id="cyberGrid_${uid}" width="40" height="20" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="20" x2="40" y2="20" stroke="#00f5d4" stroke-width="0.85" opacity="0.32"/>
+          <line x1="20" y1="0" x2="20" y2="20" stroke="#f72585" stroke-width="0.85" opacity="0.22"/>
+        </pattern>
+      `;
+
+    case "retro_comic":
+      return `
+        <!-- 1960s Pop-Art Ben-Day Halftone Dots -->
+        <pattern id="bendedDots_${uid}" width="8" height="8" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="4" r="2.2" fill="#e11d48" opacity="0.26"/>
+        </pattern>
+        <pattern id="bendedDotsCyan_${uid}" width="8" height="8" patternUnits="userSpaceOnUse">
+          <circle cx="4" cy="4" r="2.2" fill="#0284c7" opacity="0.25"/>
+        </pattern>
+      `;
+
+    case "film_noir":
+      return `
+        <!-- Film Noir Venetian Blind Diagonal Shadow Slits -->
+        <pattern id="venetian_${uid}" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(28)">
+          <rect x="0" y="0" width="34" height="15" fill="#000000" opacity="0.42"/>
+        </pattern>
+      `;
+
+    default: // gritty_graphic_novel
+      return `
+        <!-- Gritty 1990s Graphic Novel Ink Crosshatch -->
+        <pattern id="crosshatch_${uid}" width="8" height="8" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="8" x2="8" y2="0" stroke="#09090b" stroke-width="1.2" opacity="0.35"/>
+          <line x1="0" y1="0" x2="8" y2="8" stroke="#09090b" stroke-width="0.8" opacity="0.22"/>
+        </pattern>
+      `;
+  }
+}
+
+export function renderStyleForegroundOverlay(style: StyleArchetype): string {
+  switch (style) {
+    case "manga_anime":
+      return `
+        <!-- Manga Dynamic Action Speedlines in Corners -->
+        <g stroke="#ffffff" stroke-width="1.6" opacity="0.18" pointer-events="none">
+          <line x1="0" y1="0" x2="160" y2="110"/>
+          <line x1="0" y1="40" x2="120" y2="120"/>
+          <line x1="1024" y1="0" x2="864" y2="110"/>
+          <line x1="1024" y1="40" x2="904" y2="120"/>
+        </g>
+      `;
+
+    case "watercolor_storyboard":
+      return `
+        <!-- Soft Golden Hour Sunlight Vignette -->
+        <radialGradient id="wcWarmVignette" cx="50%" cy="40%" r="65%">
+          <stop offset="0%" stop-color="#fef08a" stop-opacity="0.08"/>
+          <stop offset="80%" stop-color="#ea580c" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#451a03" stop-opacity="0.25"/>
+        </radialGradient>
+        <rect width="1024" height="576" fill="url(#wcWarmVignette)" pointer-events="none"/>
+      `;
+
+    case "cyberpunk_neon":
+      return `
+        <!-- Cyberpunk Hologram Scanlines & Lens Flares -->
+        <g pointer-events="none">
+          <line x1="0" y1="2" x2="1024" y2="2" stroke="#00f5d4" stroke-width="1.5" opacity="0.35"/>
+          <line x1="0" y1="574" x2="1024" y2="574" stroke="#f72585" stroke-width="1.5" opacity="0.35"/>
+          <circle cx="120" cy="80" r="3" fill="#00f5d4" opacity="0.8"/>
+          <circle cx="910" cy="90" r="3" fill="#f72585" opacity="0.8"/>
+        </g>
+      `;
+
+    case "retro_comic":
+      return `
+        <!-- Retro Comic Print Yellowing & Border Vignette -->
+        <rect width="1024" height="576" fill="#fef08a" opacity="0.04" pointer-events="none"/>
+      `;
+
+    case "film_noir":
+      return `
+        <!-- Dramatic Venetian Blind Diagonal Shadow Overlay -->
+        <g fill="#000000" opacity="0.12" pointer-events="none">
+          <polygon points="0,0 1024,0 1024,35 0,165"/>
+          <polygon points="0,220 1024,90 1024,125 0,255"/>
+          <polygon points="0,310 1024,180 1024,215 0,345"/>
+          <polygon points="0,400 1024,270 1024,305 0,435"/>
+          <polygon points="0,490 1024,360 1024,395 0,525"/>
+        </g>
+      `;
+
+    default: // gritty_graphic_novel
+      return `
+        <!-- Cold Overcast Ink Wash Vignette -->
+        <rect width="1024" height="576" fill="#090d16" opacity="0.08" pointer-events="none"/>
+      `;
+  }
+}
+
+function renderStyleEyesSvg(
+  style: StyleArchetype,
+  uid: string,
+  rig: CharacterRigVisuals,
+  expression: CharExpression,
+  browTilt: number,
+  inkStroke: string
+): string {
+  if (style === "manga_anime") {
+    return `
+      <!-- Authentic Anime / Manga Expressive Eyes -->
+      <g>
+        <!-- Left Eye -->
+        <path d="M -29 -4 Q -16 -13 -3 -3 L -1 -5" fill="none" stroke="${inkStroke}" stroke-width="3.2" stroke-linecap="round"/>
+        <ellipse cx="-16" cy="-2" rx="7" ry="9" fill="#09090b"/>
+        <ellipse cx="-16" cy="-1.5" rx="6" ry="8" fill="url(#eyeGrad_${uid})"/>
+        <ellipse cx="-16" cy="-1.5" rx="3.5" ry="5" fill="#09090b"/>
+        <circle cx="-18.5" cy="-5" r="2.8" fill="#ffffff"/>
+        <circle cx="-13" cy="2" r="1.5" fill="#ffffff"/>
+        <path d="M -22 6 Q -16 8 -10 6" fill="none" stroke="${inkStroke}" stroke-width="1.8" stroke-linecap="round"/>
+
+        <!-- Right Eye -->
+        ${
+          expression === "wink"
+            ? `<path d="M 4 -2 Q 16 -10 28 -2" fill="none" stroke="${inkStroke}" stroke-width="3.8" stroke-linecap="round"/>
+               <path d="M 12 1 L 10 5" stroke="${inkStroke}" stroke-width="2" stroke-linecap="round"/>
+               <path d="M 20 1 L 22 5" stroke="${inkStroke}" stroke-width="2" stroke-linecap="round"/>`
+            : `<path d="M 3 -3 Q 16 -13 29 -4 L 31 -5" fill="none" stroke="${inkStroke}" stroke-width="3.2" stroke-linecap="round"/>
+               <ellipse cx="16" cy="-2" rx="7" ry="9" fill="#09090b"/>
+               <ellipse cx="16" cy="-1.5" rx="6" ry="8" fill="url(#eyeGrad_${uid})"/>
+               <ellipse cx="16" cy="-1.5" rx="3.5" ry="5" fill="#09090b"/>
+               <circle cx="13.5" cy="-5" r="2.8" fill="#ffffff"/>
+               <circle cx="19" cy="2" r="1.5" fill="#ffffff"/>
+               <path d="M 10 6 Q 16 8 22 6" fill="none" stroke="${inkStroke}" stroke-width="1.8" stroke-linecap="round"/>`
+        }
+
+        <!-- Anime Cheek Blush Ticks -->
+        <g stroke="#f43f5e" stroke-width="1.6" opacity="0.65" stroke-linecap="round">
+          <line x1="-24" y1="12" x2="-20" y2="15"/>
+          <line x1="-20" y1="12" x2="-16" y2="15"/>
+          <line x1="16" y1="12" x2="20" y2="15"/>
+          <line x1="20" y1="12" x2="24" y2="15"/>
+        </g>
+
+        <!-- Eyebrows -->
+        <path d="M -28 ${-14 - browTilt} Q -16 -18 -5 ${-13 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M 28 ${-14 - browTilt} Q 16 -18 5 ${-13 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="3.2" stroke-linecap="round"/>
+      </g>
+    `;
+  }
+
+  if (style === "cyberpunk_neon") {
+    return `
+      <!-- Cyberpunk HUD Targeting Eyes & Neon Cheek Traces -->
+      <g>
+        <path d="M -26 -3 Q -16 -10 -6 -2 Q -16 4 -26 -3 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="2"/>
+        <circle cx="-15" cy="-3" r="5.5" fill="${rig.eyeColor}"/>
+        <circle cx="-15" cy="-3" r="7.5" fill="none" stroke="#00f5d4" stroke-width="1" stroke-dasharray="3 2" opacity="0.8"/>
+        <circle cx="-15" cy="-3" r="2.5" fill="#09090b"/>
+        <circle cx="-17" cy="-5" r="1.6" fill="#ffffff"/>
+        <path d="M -27 -4 Q -16 -11 -5 -2" fill="none" stroke="${inkStroke}" stroke-width="3.5" stroke-linecap="round"/>
+
+        ${
+          expression === "wink"
+            ? `<path d="M 6 -2 Q 16 -9 26 -2" fill="none" stroke="${inkStroke}" stroke-width="3.5" stroke-linecap="round"/>`
+            : `<path d="M 6 -2 Q 16 -10 26 -3 Q 16 4 6 -2 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="2"/>
+               <circle cx="15" cy="-3" r="5.5" fill="${rig.eyeColor}"/>
+               <circle cx="15" cy="-3" r="7.5" fill="none" stroke="#f72585" stroke-width="1" stroke-dasharray="3 2" opacity="0.8"/>
+               <circle cx="15" cy="-3" r="2.5" fill="#09090b"/>
+               <circle cx="13" cy="-5" r="1.6" fill="#ffffff"/>
+               <path d="M 5 -2 Q 16 -11 27 -4" fill="none" stroke="${inkStroke}" stroke-width="3.5" stroke-linecap="round"/>`
+        }
+
+        <!-- Glowing Cyber Seam Traces -->
+        <path d="M 27 -2 L 34 3 L 34 16" fill="none" stroke="#00f5d4" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+        <path d="M -27 -2 L -34 3 L -34 16" fill="none" stroke="#f72585" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+
+        <path d="M -28 ${-13 - browTilt} Q -16 -16 -5 ${-12 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 28 ${-13 - browTilt} Q 16 -16 5 ${-12 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    `;
+  }
+
+  if (style === "watercolor_storyboard") {
+    return `
+      <!-- Soft Painterly Watercolor Eyes with Rosy Cheek Wash -->
+      <g>
+        <path d="M -25 -3 Q -16 -9 -7 -2 Q -16 3 -25 -3 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="1.8"/>
+        <ellipse cx="-15" cy="-2.5" rx="5" ry="5.5" fill="${rig.eyeColor}" opacity="0.85"/>
+        <ellipse cx="-15" cy="-2.5" rx="2.5" ry="2.8" fill="#18181b"/>
+        <circle cx="-17" cy="-4.5" r="1.8" fill="#ffffff" opacity="0.9"/>
+        <path d="M -26 -4 Q -16 -10 -6 -2" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>
+
+        ${
+          expression === "wink"
+            ? `<path d="M 6 -2 Q 16 -8 26 -2" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>`
+            : `<path d="M 7 -2 Q 16 -9 25 -3 Q 16 3 7 -2 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="1.8"/>
+               <ellipse cx="15" cy="-2.5" rx="5" ry="5.5" fill="${rig.eyeColor}" opacity="0.85"/>
+               <ellipse cx="15" cy="-2.5" rx="2.5" ry="2.8" fill="#18181b"/>
+               <circle cx="13" cy="-4.5" r="1.8" fill="#ffffff" opacity="0.9"/>
+               <path d="M 6 -2 Q 16 -10 26 -4" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>`
+        }
+
+        <!-- Soft Rosy Watercolor Cheek Blush -->
+        <ellipse cx="-18" cy="11" rx="10" ry="4.5" fill="#f43f5e" opacity="0.25"/>
+        <ellipse cx="18" cy="11" rx="10" ry="4.5" fill="#f43f5e" opacity="0.25"/>
+
+        <path d="M -27 ${-12 - browTilt} Q -16 -15 -6 ${-11 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M 27 ${-12 - browTilt} Q 16 -15 6 ${-11 + browTilt}" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+    `;
+  }
+
+  if (style === "retro_comic") {
+    return `
+      <!-- Bold Pop-Art 1960s Comic Eyes -->
+      <g>
+        <path d="M -26 -3 Q -16 -11 -6 -2 Q -16 4 -26 -3 Z" fill="#ffffff" stroke="#000000" stroke-width="2.8"/>
+        <circle cx="-15" cy="-3" r="5" fill="${rig.eyeColor}"/>
+        <circle cx="-15" cy="-3" r="2.8" fill="#000000"/>
+        <circle cx="-17" cy="-5" r="1.8" fill="#ffffff"/>
+        <path d="M -28 -4 Q -16 -12 -4 -2" fill="none" stroke="#000000" stroke-width="4.2" stroke-linecap="round"/>
+
+        ${
+          expression === "wink"
+            ? `<path d="M 5 -2 Q 16 -10 27 -2" fill="none" stroke="#000000" stroke-width="4.2" stroke-linecap="round"/>`
+            : `<path d="M 6 -2 Q 16 -11 26 -3 Q 16 4 6 -2 Z" fill="#ffffff" stroke="#000000" stroke-width="2.8"/>
+               <circle cx="15" cy="-3" r="5" fill="${rig.eyeColor}"/>
+               <circle cx="15" cy="-3" r="2.8" fill="#000000"/>
+               <circle cx="13" cy="-5" r="1.8" fill="#ffffff"/>
+               <path d="M 4 -2 Q 16 -12 28 -4" fill="none" stroke="#000000" stroke-width="4.2" stroke-linecap="round"/>`
+        }
+
+        <path d="M -29 ${-13 - browTilt} Q -16 -17 -4 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="4.2" stroke-linecap="round"/>
+        <path d="M 29 ${-13 - browTilt} Q 16 -17 4 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="4.2" stroke-linecap="round"/>
+      </g>
+    `;
+  }
+
+  if (style === "film_noir") {
+    return `
+      <!-- Film Noir Chiaroscuro High-Contrast Eyes -->
+      <g>
+        <polygon points="-36,-18 -4,-18 -2,12 -36,12" fill="#000000" opacity="0.65"/>
+        <path d="M -25 -3 Q -16 -9 -7 -2" fill="none" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="-15" cy="-3" r="2" fill="#ffffff"/>
+
+        ${
+          expression === "wink"
+            ? `<path d="M 6 -2 Q 16 -9 26 -2" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>`
+            : `<polygon points="6,-18 36,-18 36,12 6,12" fill="#000000" opacity="0.25"/>
+               <path d="M 7 -2 Q 16 -10 25 -3 Q 16 4 7 -2 Z" fill="#ffffff" stroke="#000000" stroke-width="2"/>
+               <circle cx="15" cy="-3" r="4.5" fill="#09090b"/>
+               <circle cx="13" cy="-5" r="1.8" fill="#ffffff"/>
+               <path d="M 5 -2 Q 16 -11 27 -4" fill="none" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>`
+        }
+
+        <path d="M -28 ${-13 - browTilt} Q -16 -16 -5 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+        <path d="M 28 ${-13 - browTilt} Q 16 -16 5 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+    `;
+  }
+
+  // Default: gritty_graphic_novel
+  return `
+    <g>
+      <polygon points="-28,-14 -6,-14 -10,-4 -28,-4" fill="#09090b" opacity="0.55"/>
+      <path d="M -26 -3 Q -16 -10 -6 -2 Q -16 4 -26 -3 Z" fill="#ffffff" stroke="#000000" stroke-width="2.2"/>
+      <circle cx="-15" cy="-3" r="4.8" fill="${rig.eyeColor}"/>
+      <circle cx="-15" cy="-3" r="2.4" fill="#000000"/>
+      <circle cx="-17" cy="-5" r="1.6" fill="#ffffff"/>
+      <path d="M -27 -4 Q -16 -11 -5 -2" fill="none" stroke="#000000" stroke-width="3.8" stroke-linecap="round"/>
+      <line x1="-22" y1="5" x2="-16" y2="7" stroke="#000000" stroke-width="1.4"/>
+
+      ${
+        expression === "wink"
+          ? `<path d="M 6 -2 Q 16 -9 26 -2" fill="none" stroke="#000000" stroke-width="3.8" stroke-linecap="round"/>`
+          : `<polygon points="6,-14 28,-14 28,-4 10,-4" fill="#09090b" opacity="0.45"/>
+             <path d="M 6 -2 Q 16 -10 26 -3 Q 16 4 6 -2 Z" fill="#ffffff" stroke="#000000" stroke-width="2.2"/>
+             <circle cx="15" cy="-3" r="4.8" fill="${rig.eyeColor}"/>
+             <circle cx="15" cy="-3" r="2.4" fill="#000000"/>
+             <circle cx="13" cy="-5" r="1.6" fill="#ffffff"/>
+             <path d="M 5 -2 Q 16 -11 27 -4" fill="none" stroke="#000000" stroke-width="3.8" stroke-linecap="round"/>
+             <line x1="16" y1="7" x2="22" y2="5" stroke="#000000" stroke-width="1.4"/>`
+      }
+
+      <path d="M -28 ${-13 - browTilt} Q -16 -16 -5 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="3.8" stroke-linecap="round"/>
+      <path d="M 28 ${-13 - browTilt} Q 16 -16 5 ${-12 + browTilt}" fill="none" stroke="#000000" stroke-width="3.8" stroke-linecap="round"/>
+    </g>
+  `;
+}
+
 function renderBackgroundLayerSvg(
   bg: BackgroundDef,
   palette: string[],
   lighting: LightingMood,
   variationSeed: number = 0,
   editDirective?: string,
-  beatDescription?: string
+  beatDescription?: string,
+  artStyle: string = ""
 ): string {
   const textPool = `${beatDescription || ""} ${editDirective || ""}`.toLowerCase();
   const isPlain =
@@ -1265,18 +1625,47 @@ function renderBackgroundLayerSvg(
     `;
   }
 
-  const [skyTop, skyMid, skyBot] =
-    lighting === "darker"
-      ? ["#020308", "#060a12", "#0f172a"]
-      : lighting === "crimson"
-      ? ["#140307", "#2e0712", "#4c0519"]
-      : lighting === "emerald"
-      ? ["#02140e", "#062e22", "#064e3b"]
-      : lighting === "golden"
-      ? ["#1c1008", "#451a03", "#9a3412"]
-      : lighting === "brighter"
-      ? ["#1e293b", "#334155", "#64748b"]
-      : bg.skyColors;
+  const style = resolveStyleArchetype(artStyle);
+  const uid = `bgs_${(variationSeed + hashStr(bg.id)) % 99999}`;
+
+  let skyTop: string;
+  let skyMid: string;
+  let skyBot: string;
+
+  if (style === "watercolor_storyboard") {
+    skyTop = palette[0] || "#fb923c";
+    skyMid = palette[1] || "#f472b6";
+    skyBot = palette[2] || "#fde047";
+  } else if (style === "manga_anime") {
+    skyTop = "#180b2b";
+    skyMid = "#2e1065";
+    skyBot = "#38bdf8";
+  } else if (style === "cyberpunk_neon") {
+    skyTop = "#04060d";
+    skyMid = "#0f084b";
+    skyBot = "#26063b";
+  } else if (style === "retro_comic") {
+    skyTop = "#fde047";
+    skyMid = "#fef08a";
+    skyBot = "#faf5eb";
+  } else if (style === "film_noir") {
+    skyTop = "#030305";
+    skyMid = "#09090b";
+    skyBot = "#18181b";
+  } else {
+    [skyTop, skyMid, skyBot] =
+      lighting === "darker"
+        ? ["#020308", "#060a12", "#0f172a"]
+        : lighting === "crimson"
+        ? ["#140307", "#2e0712", "#4c0519"]
+        : lighting === "emerald"
+        ? ["#02140e", "#062e22", "#064e3b"]
+        : lighting === "golden"
+        ? ["#1c1008", "#451a03", "#9a3412"]
+        : lighting === "brighter"
+        ? ["#1e293b", "#334155", "#64748b"]
+        : bg.skyColors;
+  }
 
   const accent = palette[3] || bg.accentColor;
   const secondaryAccent = palette[1] || bg.secondaryAccent || "#38bdf8";
@@ -1301,156 +1690,227 @@ function renderBackgroundLayerSvg(
   let sceneGeometry = "";
   const shift = (seed % 3) * 18;
 
-  switch (bg.variant) {
-    case "rooftop":
-    case "floating_island":
-      sceneGeometry = `
-        <g fill="#070b14" opacity="0.9">
-          <rect x="${20 + shift}" y="${95 - shift}" width="75" height="390"/>
-          <rect x="110" y="140" width="68" height="345"/>
-          <rect x="${198 - shift}" y="60" width="112" height="425"/>
-          <polygon points="${198 - shift},60 ${254 - shift},15 ${310 - shift},60"/>
-          <rect x="335" y="120" width="88" height="365"/>
-          <rect x="610" y="95" width="98" height="390"/>
-          <rect x="${730 + shift}" y="52" width="128" height="433"/>
-          <rect x="885" y="110" width="98" height="375"/>
-        </g>
-        ${windowGrid(212 - shift, 82, 4, 14, 14, 6, 8, 12, accent)}
-        ${windowGrid(745 + shift, 78, 4, 15, 16, 6, 9, 12, secondaryAccent)}
-        ${windowGrid(625, 118, 3, 12, 14, 6, 8, 12, accent)}
-        <rect x="178" y="128" width="16" height="145" rx="3" fill="${accent}" opacity="0.75"/>
-        <rect x="708" y="108" width="18" height="175" rx="3" fill="${secondaryAccent}" opacity="0.75"/>
-        <g fill="#0e1422" stroke="#1e293b" stroke-width="2">
-          <rect x="740" y="325" width="175" height="120" rx="4"/>
-          <circle cx="795" cy="385" r="34" fill="#090d16" stroke="#334155" stroke-width="3"/>
-          <line x1="875" y1="325" x2="875" y2="190" stroke="#475569" stroke-width="4"/>
-          <circle cx="875" cy="190" r="6" fill="#ef4444" stroke="none"/>
-        </g>
-        <polygon points="0,432 1024,452 1024,576 0,576" fill="#0b0f19" stroke="#1e293b" stroke-width="2"/>
-        <ellipse cx="420" cy="525" rx="280" ry="18" fill="${accent}" opacity="0.18"/>
-      `;
-      break;
+  if (style === "watercolor_storyboard") {
+    sceneGeometry = `
+      <!-- Soft Watercolor Rolling Mountains & Hills -->
+      <path d="M 0 310 Q 220 200 480 280 T 1024 220 L 1024 576 L 0 576 Z" fill="${palette[3] || "#2a9d8f"}" opacity="0.45"/>
+      <path d="M 0 350 Q 310 260 620 330 T 1024 280 L 1024 576 L 0 576 Z" fill="${palette[4] || "#264653"}" opacity="0.6"/>
+      <path d="M 0 410 Q 250 340 512 400 T 1024 360 L 1024 576 L 0 576 Z" fill="${palette[1] || "#f4a261"}" opacity="0.7"/>
+      <!-- Quaint Storybook Cottage / Castle Silhouette -->
+      <g fill="#1f2937" opacity="0.8">
+        <rect x="${160 + shift}" y="250" width="130" height="190" rx="4"/>
+        <polygon points="${150 + shift},250 ${225 + shift},170 ${300 + shift},250"/>
+        <rect x="${215 + shift}" y="185" width="20" height="30"/>
+        <circle cx="${225 + shift}" cy="280" r="14" fill="#fef08a" opacity="0.9"/>
+        <rect x="${680 - shift}" y="230" width="115" height="210" rx="3"/>
+        <polygon points="${670 - shift},230 ${737 - shift},155 ${805 - shift},230"/>
+        <circle cx="${737 - shift}" cy="265" r="12" fill="#fef08a" opacity="0.9"/>
+      </g>
+      <!-- Painterly Watercolor Trees -->
+      <g fill="#166534" opacity="0.75">
+        <ellipse cx="120" cy="370" rx="52" ry="70"/>
+        <ellipse cx="160" cy="350" rx="46" ry="60"/>
+        <ellipse cx="860" cy="360" rx="56" ry="75"/>
+        <ellipse cx="900" cy="380" rx="48" ry="65"/>
+      </g>
+      <polygon points="0,460 1024,440 1024,576 0,576" fill="#e9c46a" opacity="0.4"/>
+    `;
+  } else if (style === "film_noir") {
+    sceneGeometry = `
+      <!-- Film Noir Monochromatic Architecture -->
+      <g fill="#050507">
+        <rect x="0" y="20" width="240" height="556"/>
+        <rect x="240" y="110" width="90" height="466"/>
+        <rect x="680" y="80" width="110" height="496"/>
+        <rect x="790" y="10" width="234" height="566"/>
+      </g>
+      <!-- Stark Chiaroscuro Fire Escape Shadows -->
+      <g stroke="#ffffff" stroke-width="1.8" opacity="0.22">
+        <line x1="40" y1="90" x2="190" y2="90"/>
+        <line x1="40" y1="180" x2="190" y2="180"/>
+        <line x1="40" y1="270" x2="190" y2="270"/>
+        <line x1="190" y1="90" x2="40" y2="180"/>
+        <line x1="40" y1="180" x2="190" y2="270"/>
+        <line x1="820" y1="100" x2="970" y2="100"/>
+        <line x1="820" y1="190" x2="970" y2="190"/>
+        <line x1="820" y1="280" x2="970" y2="280"/>
+        <line x1="970" y1="100" x2="820" y2="190"/>
+        <line x1="820" y1="190" x2="970" y2="280"/>
+      </g>
+      <!-- Solitary Glowing Vintage Streetlamp with Conical Spotlight Beam -->
+      <g>
+        <line x1="285" y1="200" x2="285" y2="475" stroke="#18181b" stroke-width="8"/>
+        <path d="M 270 200 Q 285 180 300 200 Z" fill="#27272a"/>
+        <polygon points="275,200 295,200 300,225 270,225" fill="#fef08a" stroke="#18181b" stroke-width="2"/>
+        <polygon points="275,225 295,225 480,576 90,576" fill="#fef08a" opacity="0.18"/>
+      </g>
+      <!-- Wet Reflective Asphalt Cobblestones -->
+      <polygon points="0,465 1024,465 1024,576 0,576" fill="#09090b"/>
+      <ellipse cx="285" cy="510" rx="160" ry="24" fill="#ffffff" opacity="0.14"/>
+    `;
+  } else if (style === "retro_comic") {
+    sceneGeometry = `
+      <!-- Bold 1960s Pop-Art Comic Skyline -->
+      <g stroke="#000000" stroke-width="4" stroke-linejoin="round">
+        <rect x="25" y="65" width="145" height="425" fill="#2563eb"/>
+        <rect x="185" y="135" width="115" height="355" fill="#e11d48"/>
+        <rect x="315" y="35" width="175" height="455" fill="#0284c7"/>
+        <rect x="575" y="85" width="155" height="405" fill="#eab308"/>
+        <rect x="745" y="125" width="115" height="365" fill="#e11d48"/>
+        <rect x="875" y="55" width="125" height="435" fill="#2563eb"/>
+      </g>
+      <!-- Bold Pop-Art Window Panes -->
+      ${windowGrid(40, 90, 3, 10, 26, 18, 12, 14, "#fef08a")}
+      ${windowGrid(335, 60, 4, 11, 24, 18, 12, 14, "#ffffff")}
+      ${windowGrid(595, 110, 3, 9, 28, 18, 14, 16, "#fafafa")}
+      ${windowGrid(895, 80, 3, 10, 22, 18, 12, 14, "#fef08a")}
+      <!-- Retro Comic Billboard Frame -->
+      <g stroke="#000000" stroke-width="3.5">
+        <rect x="175" y="305" width="135" height="72" fill="#facc15"/>
+        <text x="242" y="348" fill="#000000" font-family="impact, sans-serif" font-weight="900" font-size="22" text-anchor="middle" letter-spacing="2">POW!</text>
+      </g>
+      <polygon points="0,480 1024,480 1024,576 0,576" fill="#18181b" stroke="#000000" stroke-width="4"/>
+    `;
+  } else if (style === "cyberpunk_neon") {
+    sceneGeometry = `
+      <!-- Cyberpunk Monolith Mega-Towers -->
+      <g fill="#04060d" stroke="#00f5d4" stroke-width="2.5">
+        <polygon points="20,110 160,40 160,490 20,490"/>
+        <polygon points="180,75 310,15 310,490 180,490"/>
+        <polygon points="560,85 700,25 700,490 560,490" stroke="#f72585"/>
+        <polygon points="720,35 860,105 860,490 720,490" stroke="#00f5d4"/>
+        <rect x="880" y="55" width="130" height="435" stroke="#f72585"/>
+      </g>
+      <!-- Glowing Kanji Signage Towers -->
+      <g fill="#090d16">
+        <rect x="165" y="75" width="32" height="150" rx="4" stroke="#00f5d4" stroke-width="2.5"/>
+        <text x="181" y="108" fill="#00f5d4" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">光</text>
+        <text x="181" y="141" fill="#00f5d4" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">電</text>
+        <text x="181" y="174" fill="#00f5d4" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">網</text>
+        <rect x="705" y="55" width="34" height="180" rx="4" stroke="#f72585" stroke-width="2.5"/>
+        <text x="722" y="90" fill="#f72585" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">新</text>
+        <text x="722" y="125" fill="#f72585" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">東</text>
+        <text x="722" y="160" fill="#f72585" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">京</text>
+        <text x="722" y="195" fill="#f72585" font-family="monospace" font-size="16" font-weight="900" text-anchor="middle">市</text>
+      </g>
+      <!-- Flying Spinner Vehicle Trails -->
+      <line x1="0" y1="160" x2="420" y2="150" stroke="#00f5d4" stroke-width="3" opacity="0.85"/>
+      <circle cx="420" cy="150" r="4.5" fill="#ffffff"/>
+      <line x1="1024" y1="205" x2="680" y2="220" stroke="#f72585" stroke-width="3" opacity="0.9"/>
+      <circle cx="680" cy="220" r="4.5" fill="#ffffff"/>
+      <!-- Perspective Cyber Holographic Ground Grid -->
+      <polygon points="0,470 1024,470 1024,576 0,576" fill="#03040a"/>
+      <polygon points="0,470 1024,470 1024,576 0,576" fill="url(#cyberGrid_${uid})"/>
+      <ellipse cx="512" cy="520" rx="420" ry="35" fill="#f72585" opacity="0.24"/>
+    `;
+  } else if (style === "manga_anime") {
+    sceneGeometry = `
+      <!-- Anime / Manga Tokyo Horizon & Gabled Rooftops -->
+      <g fill="#110926" stroke="#38bdf8" stroke-width="2">
+        <polygon points="10,130 90,65 170,130 170,480 10,480"/>
+        <polygon points="180,95 270,30 360,95 360,480 180,480"/>
+        <rect x="580" y="80" width="130" height="400"/>
+        <polygon points="730,120 820,50 910,120 910,480 730,480"/>
+        <rect x="920" y="100" width="94" height="380"/>
+      </g>
+      <!-- Slanted Telephone Poles with Overhead Cross Wires -->
+      <g stroke="#ffffff" stroke-width="1.8" opacity="0.45">
+        <line x1="210" y1="80" x2="210" y2="480" stroke-width="4"/>
+        <line x1="180" y1="120" x2="240" y2="120" stroke-width="3"/>
+        <line x1="175" y1="145" x2="245" y2="145" stroke-width="3"/>
+        <line x1="0" y1="95" x2="1024" y2="155"/>
+        <line x1="0" y1="120" x2="1024" y2="180"/>
+        <line x1="0" y1="145" x2="1024" y2="205"/>
+      </g>
+      ${windowGrid(595, 110, 3, 11, 24, 12, 12, 14, "#38bdf8")}
+      <polygon points="0,470 1024,470 1024,576 0,576" fill="#0c071e"/>
+      <line x1="0" y1="470" x2="1024" y2="470" stroke="#38bdf8" stroke-width="2"/>
+    `;
+  } else {
+    // Default: gritty_graphic_novel
+    sceneGeometry = `
+      <!-- Gritty Graphic Novel Heavy Black Ink Facades -->
+      <g fill="#090b10" stroke="#000000" stroke-width="3.5">
+        <rect x="15" y="40" width="165" height="440"/>
+        <polygon points="15,40 97,5 180,40"/>
+        <rect x="${200 + shift}" y="90" width="130" height="390"/>
+        <rect x="${620 - shift}" y="70" width="150" height="410"/>
+        <rect x="790" y="30" width="180" height="450"/>
+        <polygon points="790,30 880,0 970,30"/>
+      </g>
+      <!-- Industrial Iron Fire Escape Framework -->
+      <g stroke="#000000" stroke-width="2.5">
+        <line x1="40" y1="120" x2="155" y2="120"/>
+        <line x1="40" y1="210" x2="155" y2="210"/>
+        <line x1="40" y1="300" x2="155" y2="300"/>
+        <line x1="155" y1="120" x2="40" y2="210"/>
+        <line x1="40" y1="210" x2="155" y2="300"/>
+        <line x1="820" y1="110" x2="940" y2="110"/>
+        <line x1="820" y1="200" x2="940" y2="200"/>
+        <line x1="820" y1="290" x2="940" y2="290"/>
+        <line x1="940" y1="110" x2="820" y2="200"/>
+        <line x1="820" y1="200" x2="940" y2="290"/>
+      </g>
+      ${windowGrid(215 + shift, 115, 3, 10, 26, 12, 12, 16, accent)}
+      ${windowGrid(640 - shift, 95, 3, 11, 28, 12, 14, 16, secondaryAccent)}
+      <polygon points="0,465 1024,465 1024,576 0,576" fill="#040608" stroke="#000000" stroke-width="3"/>
+    `;
+  }
 
-    case "alley":
-    case "cyber_market":
-    case "prison_block":
-      sceneGeometry = `
-        <rect x="320" y="65" width="384" height="405" fill="#0d1526"/>
-        ${windowGrid(355, 92, 6, 12, 22, 8, 14, 14, accent)}
-        <polygon points="0,0 335,95 335,465 0,576" fill="#0a0e17" stroke="#1e293b" stroke-width="2"/>
-        <polygon points="1024,0 689,95 689,465 1024,576" fill="#080b12" stroke="#1e293b" stroke-width="2"/>
-        <g>
-          <rect x="125" y="${130 + shift}" width="145" height="48" rx="6" fill="#090d16" stroke="${accent}" stroke-width="3.5"/>
-          <rect x="137" y="${142 + shift}" width="121" height="24" rx="3" fill="${accent}" opacity="0.4"/>
-          <rect x="730" y="160" width="54" height="160" rx="6" fill="#090d16" stroke="${secondaryAccent}" stroke-width="3"/>
-          <rect x="742" y="175" width="30" height="130" rx="3" fill="${secondaryAccent}" opacity="0.4"/>
-        </g>
-        <polygon points="335,465 689,465 1024,576 0,576" fill="#070a12"/>
-        <ellipse cx="512" cy="518" rx="200" ry="18" fill="${accent}" opacity="0.24"/>
-      `;
-      break;
-
-    case "power_grid":
-    case "laboratory":
-      sceneGeometry = `
-        <g fill="#0c121e" stroke="#1e293b" stroke-width="3">
-          <rect x="85" y="95" width="155" height="365" rx="6"/>
-          <rect x="784" y="95" width="155" height="365" rx="6"/>
-          <rect x="412" y="125" width="200" height="335" rx="8"/>
-        </g>
-        <g fill="${accent}" opacity="0.75">
-          <rect x="110" y="130" width="105" height="14" rx="7"/>
-          <rect x="110" y="165" width="105" height="14" rx="7"/>
-          <rect x="110" y="200" width="105" height="14" rx="7"/>
-          <rect x="809" y="130" width="105" height="14" rx="7"/>
-          <rect x="809" y="165" width="105" height="14" rx="7"/>
-          <rect x="809" y="200" width="105" height="14" rx="7"/>
-        </g>
-        <circle cx="512" cy="260" r="68" fill="#090d16" stroke="${accent}" stroke-width="5"/>
-        <circle cx="512" cy="260" r="42" fill="${accent}" opacity="0.5"/>
-        <path d="M 0 115 Q 250 225 512 140 T 1024 120" fill="none" stroke="#475569" stroke-width="5"/>
-        <rect x="0" y="455" width="1024" height="121" fill="#070a12" stroke="#334155" stroke-width="2"/>
-      `;
-      break;
-
-    case "beach":
-    case "harbor_dock":
-      sceneGeometry = `
-        <polygon points="0,235 160,175 390,198 680,160 1024,195 1024,315 0,315" fill="#1b242c"/>
-        <rect x="0" y="300" width="1024" height="105" fill="#23313d"/>
-        <path d="M 0 340 Q 130 325 260 342 T 520 338 T 780 344 T 1024 335" fill="none" stroke="#cbd5e1" stroke-width="3.5" opacity="0.6"/>
-        <path d="M 0 385 Q 160 372 320 388 T 640 382 T 1024 386" fill="none" stroke="#e2e8f0" stroke-width="4" opacity="0.75"/>
-        <polygon points="0,395 1024,382 1024,576 0,576" fill="#26282a"/>
-        <g stroke="#141619" stroke-width="11" stroke-linecap="round">
-          <line x1="125" y1="455" x2="215" y2="340"/>
-          <line x1="215" y1="455" x2="125" y2="340"/>
-          <line x1="108" y1="402" x2="232" y2="390"/>
-          <line x1="785" y1="468" x2="878" y2="350"/>
-          <line x1="878" y1="468" x2="785" y2="350"/>
-          <line x1="768" y1="412" x2="895" y2="400"/>
-        </g>
-      `;
-      break;
-
-    case "vehicle":
-    case "train_car":
-    case "starship_bridge":
-      sceneGeometry = `
-        <polygon points="0,50 225,145 225,485 0,576" fill="#161e26" stroke="#334155" stroke-width="3"/>
-        <polygon points="1024,50 799,145 799,485 1024,576" fill="#161e26" stroke="#334155" stroke-width="3"/>
-        <polygon points="225,145 799,145 755,465 269,465" fill="#1f2933" stroke="${accent}" stroke-width="3"/>
-        <line x1="225" y1="145" x2="269" y2="465" stroke="#94a3b8" stroke-width="4" stroke-dasharray="12 6"/>
-        <line x1="799" y1="145" x2="755" y2="465" stroke="#94a3b8" stroke-width="4" stroke-dasharray="12 6"/>
-        <polygon points="225,465 799,465 1024,576 0,576" fill="#0d1217"/>
-      `;
-      break;
-
-    case "vault":
-    case "throne_room":
-    case "cathedral_nave":
-    case "interior":
-      sceneGeometry = `
-        <polygon points="0,0 250,85 250,475 0,576" fill="#080c16" stroke="#1e293b" stroke-width="2"/>
-        <polygon points="1024,0 774,85 774,475 1024,576" fill="#080c16" stroke="#1e293b" stroke-width="2"/>
-        <rect x="250" y="85" width="524" height="390" fill="#0b1120"/>
-        ${windowGrid(285, 115, 8, 10, 42, 10, 14, 18, accent)}
-        <polygon points="430,475 594,475 630,550 394,550" fill="#162032" stroke="${accent}" stroke-width="2.5"/>
-        <ellipse cx="512" cy="475" rx="75" ry="14" fill="${accent}" opacity="0.6"/>
-        <polygon points="435,475 370,195 654,195 589,475" fill="${accent}" opacity="0.15"/>
-        <polygon points="250,475 774,475 1024,576 0,576" fill="#060911"/>
-      `;
-      break;
-
-    case "forest":
-    case "mountain_pass":
-    case "canyon_outpost":
-      sceneGeometry = `
-        <polygon points="0,320 180,130 370,250 580,95 810,240 1024,140 1024,465 0,465" fill="#0c131f"/>
-        <g fill="#070b12" stroke="#1e293b" stroke-width="2">
-          <rect x="75" y="40" width="55" height="440"/>
-          <rect x="195" y="70" width="42" height="410"/>
-          <rect x="795" y="55" width="52" height="425"/>
-          <rect x="905" y="30" width="60" height="450"/>
-        </g>
-        <rect x="0" y="455" width="1024" height="121" fill="#06090e"/>
-      `;
-      break;
-
-    default:
-      sceneGeometry = `
-        <g fill="#0a0f1c">
-          <rect x="0" y="40" width="185" height="425"/>
-          <rect x="${205 + shift}" y="110" width="145" height="355"/>
-          <rect x="${675 - shift}" y="95" width="150" height="370"/>
-          <rect x="845" y="35" width="179" height="430"/>
-        </g>
-        ${windowGrid(20, 70, 4, 12, 24, 8, 12, 16, accent)}
-        ${windowGrid(865, 65, 4, 12, 24, 8, 12, 16, secondaryAccent)}
-        <path d="M 0 260 L 1024 260" stroke="#334155" stroke-width="6" opacity="0.6"/>
-        <rect x="0" y="455" width="1024" height="121" fill="${bg.groundColor}"/>
-        <line x1="0" y1="455" x2="1024" y2="455" stroke="${accent}" stroke-width="2.5" opacity="0.65"/>
-      `;
-      break;
+  let styleSkyExtras = "";
+  if (style === "watercolor_storyboard") {
+    styleSkyExtras = `
+      <circle cx="${moonX}" cy="${moonY}" r="56" fill="url(#wcSunGlow_${uid})"/>
+      <circle cx="${moonX}" cy="${moonY}" r="34" fill="#fef08a" opacity="0.85"/>
+      <g fill="#ffffff" opacity="0.32">
+        <ellipse cx="260" cy="115" rx="150" ry="24"/>
+        <ellipse cx="740" cy="95" rx="170" ry="28"/>
+      </g>
+    `;
+  } else if (style === "manga_anime") {
+    styleSkyExtras = `
+      <g stroke="#ffffff" stroke-width="1.2" opacity="0.22">
+        <line x1="512" y1="576" x2="80" y2="0"/>
+        <line x1="512" y1="576" x2="260" y2="0"/>
+        <line x1="512" y1="576" x2="764" y2="0"/>
+        <line x1="512" y1="576" x2="944" y2="0"/>
+      </g>
+      <rect width="1024" height="260" fill="url(#screentone_${uid})"/>
+      <path d="M ${moonX} ${moonY - 28} A 28 28 0 1 0 ${moonX + 24} ${moonY + 20} A 22 22 0 1 1 ${moonX} ${moonY - 28} Z" fill="#fef08a"/>
+    `;
+  } else if (style === "cyberpunk_neon") {
+    styleSkyExtras = `
+      <ellipse cx="512" cy="510" rx="580" ry="110" fill="#f72585" opacity="0.18"/>
+      <rect x="175" y="75" width="28" height="120" rx="4" fill="#090d16" stroke="#00f5d4" stroke-width="2.5"/>
+      <text x="189" y="105" fill="#00f5d4" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">光</text>
+      <text x="189" y="135" fill="#00f5d4" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">電</text>
+      <text x="189" y="165" fill="#00f5d4" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">網</text>
+      <rect x="745" y="55" width="34" height="150" rx="4" fill="#090d16" stroke="#f72585" stroke-width="2.5"/>
+      <text x="762" y="90" fill="#f72585" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">シ</text>
+      <text x="762" y="120" fill="#f72585" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">テ</text>
+      <text x="762" y="150" fill="#f72585" font-family="monospace" font-size="14" font-weight="900" text-anchor="middle">ィ</text>
+      <polygon points="0,475 1024,475 1024,576 0,576" fill="url(#cyberGrid_${uid})"/>
+    `;
+  } else if (style === "retro_comic") {
+    styleSkyExtras = `
+      <rect width="1024" height="300" fill="url(#bendedDots_${uid})"/>
+      <polygon points="512,160 480,0 544,0" fill="#eab308" opacity="0.25"/>
+      <circle cx="${moonX}" cy="${moonY}" r="45" fill="#fde047" stroke="#000000" stroke-width="3"/>
+    `;
+  } else if (style === "film_noir") {
+    styleSkyExtras = `
+      <polygon points="860,110 180,576 460,576 880,110" fill="#ffffff" opacity="0.16"/>
+      <circle cx="870" cy="110" r="14" fill="#fef08a" opacity="0.9"/>
+      <ellipse cx="320" cy="530" rx="160" ry="18" fill="#ffffff" opacity="0.18"/>
+      <rect width="1024" height="576" fill="url(#venetian_${uid})"/>
+    `;
+  } else {
+    // gritty_graphic_novel
+    styleSkyExtras = `
+      <circle cx="${moonX}" cy="${moonY}" r="48" fill="#f8fafc" opacity="0.14"/>
+      <circle cx="${moonX}" cy="${moonY}" r="28" fill="#f8fafc" opacity="0.24"/>
+      <rect y="380" width="1024" height="196" fill="url(#crosshatch_${uid})"/>
+    `;
   }
 
   return `
@@ -1469,15 +1929,14 @@ function renderBackgroundLayerSvg(
       </pattern>
     </defs>
     <rect width="1024" height="576" fill="url(#skyGrad)"/>
-    <circle cx="${moonX}" cy="${moonY}" r="48" fill="#f8fafc" opacity="0.14"/>
-    <circle cx="${moonX}" cy="${moonY}" r="28" fill="#f8fafc" opacity="0.24"/>
+    ${styleSkyExtras}
     <rect width="1024" height="576" fill="url(#ambientGlow)"/>
     ${sceneGeometry}
     <rect width="1024" height="576" fill="url(#halftone)"/>
   `;
 }
 
-function renderOutfitSvg(rig: CharacterRigVisuals, uid: string): string {
+function renderBaseOutfitSvg(rig: CharacterRigVisuals, uid: string): string {
   if (rig.outfitStyle === "royal_cloak") {
     // Flowing celestial mantle/cloak, tunic underneath, golden embroidery, jeweled brooch
     return `
@@ -1583,6 +2042,32 @@ function renderOutfitSvg(rig: CharacterRigVisuals, uid: string): string {
   `;
 }
 
+function renderOutfitSvg(rig: CharacterRigVisuals, uid: string, style: StyleArchetype = "gritty_graphic_novel"): string {
+  const base = renderBaseOutfitSvg(rig, uid);
+  let styleOutfitOverlay = "";
+  if (style === "cyberpunk_neon") {
+    styleOutfitOverlay = `
+      <path d="M -52 54 L -24 54 L -18 195 L 0 215 L 18 195 L 24 54 L 52 54" fill="none" stroke="#00f5d4" stroke-width="2.5" opacity="0.9"/>
+      <line x1="-54" y1="95" x2="-88" y2="120" stroke="#f72585" stroke-width="2.5" opacity="0.85"/>
+      <line x1="54" y1="95" x2="88" y2="120" stroke="#f72585" stroke-width="2.5" opacity="0.85"/>
+    `;
+  } else if (style === "film_noir") {
+    styleOutfitOverlay = `
+      <polygon points="-95,140 95,80 95,255 -95,255" fill="#000000" opacity="0.65"/>
+    `;
+  } else if (style === "retro_comic") {
+    styleOutfitOverlay = `
+      <polygon points="12,54 52,54 88,185 54,255 18,255" fill="#000000" opacity="0.45"/>
+    `;
+  } else if (style === "manga_anime") {
+    styleOutfitOverlay = `
+      <line x1="-24" y1="90" x2="-8" y2="135" stroke="#09090b" stroke-width="2" stroke-linecap="round"/>
+      <line x1="24" y1="90" x2="8" y2="135" stroke="#09090b" stroke-width="2" stroke-linecap="round"/>
+    `;
+  }
+  return `${base}\n${styleOutfitOverlay}`;
+}
+
 function renderCharacterLayerSvg(
   char: CharacterProfile,
   rig: CharacterRigVisuals,
@@ -1590,8 +2075,28 @@ function renderCharacterLayerSvg(
   expression: CharExpression,
   slotIndex: number,
   totalInScene: number,
-  camera: CameraShot
+  camera: CameraShot,
+  artStyle: string = ""
 ): string {
+  const style = resolveStyleArchetype(artStyle);
+  const inkStroke =
+    style === "watercolor_storyboard"
+      ? "#332720"
+      : style === "film_noir" || style === "retro_comic" || style === "gritty_graphic_novel"
+      ? "#000000"
+      : "#09090b";
+
+  const strokeWidth =
+    style === "retro_comic"
+      ? 4.0
+      : style === "gritty_graphic_novel"
+      ? 3.6
+      : style === "watercolor_storyboard"
+      ? 2.0
+      : style === "manga_anime"
+      ? 2.4
+      : 2.8;
+
   const xPositions =
     totalInScene === 1
       ? [512]
@@ -1632,64 +2137,64 @@ function renderCharacterLayerSvg(
 
   const mouthSvg =
     expression === "angry" || expression === "fierce"
-      ? `<path d="M -11 26 Q 0 20 11 26 L 9 31 Q 0 28 -9 31 Z" fill="#ffffff" stroke="#09090b" stroke-width="2"/>`
+      ? `<path d="M -11 26 Q 0 20 11 26 L 9 31 Q 0 28 -9 31 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="2"/>`
       : expression === "happy"
-      ? `<path d="M -13 22 Q 0 36 13 22 Z" fill="#ffffff" stroke="#09090b" stroke-width="2.2"/>
+      ? `<path d="M -13 22 Q 0 36 13 22 Z" fill="#ffffff" stroke="${inkStroke}" stroke-width="2.2"/>
          <path d="M -9 27 Q 0 33 9 27" fill="#ef4444"/>`
       : expression === "sad"
-      ? `<path d="M -11 29 Q 0 20 11 29" fill="none" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/>
+      ? `<path d="M -11 29 Q 0 20 11 29" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>
          <path d="M -18 4 Q -22 14 -18 18 Q -14 14 -18 4 Z" fill="#38bdf8" opacity="0.85"/>`
       : expression === "worried"
-      ? `<path d="M -11 27 Q -5 23 0 27 Q 5 31 11 26" fill="none" stroke="#09090b" stroke-width="2.4" stroke-linecap="round"/>
+      ? `<path d="M -11 27 Q -5 23 0 27 Q 5 31 11 26" fill="none" stroke="${inkStroke}" stroke-width="2.4" stroke-linecap="round"/>
          <path d="M 28 -16 C 24 -4, 34 -4, 28 -16 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2"/>`
       : expression === "shocked"
-      ? `<path d="M -8 24 Q 0 21 8 24 Q 7 29 0 30 Q -7 29 -8 24 Z" fill="#3b0707" stroke="#09090b" stroke-width="2"/>
+      ? `<path d="M -8 24 Q 0 21 8 24 Q 7 29 0 30 Q -7 29 -8 24 Z" fill="#3b0707" stroke="${inkStroke}" stroke-width="2"/>
          <line x1="-5" y1="24" x2="5" y2="24" stroke="#ffffff" stroke-width="1.5"/>`
       : expression === "smirking" || expression === "wink"
-      ? `<path d="M -9 26 Q 4 29 14 20" fill="none" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/>`
-      : `<path d="M -10 26 Q 0 28 11 24" fill="none" stroke="#09090b" stroke-width="2.6" stroke-linecap="round"/>
+      ? `<path d="M -9 26 Q 4 29 14 20" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>`
+      : `<path d="M -10 26 Q 0 28 11 24" fill="none" stroke="${inkStroke}" stroke-width="2.6" stroke-linecap="round"/>
          <path d="M -5 31 Q 0 33 5 31" fill="none" stroke="${rig.skinShadow}" stroke-width="1.8" stroke-linecap="round"/>`;
 
   let backHairSvg = "";
   if (rig.hairStyle === "long" || rig.hairStyle === "braided" || rig.hairStyle === "crown") {
     backHairSvg = `
-      <path d="M -46 -18 C -58 25, -64 95, -52 145 C -38 135, -32 95, -28 45 L 28 45 C 32 95, 38 135, 52 145 C 64 95, 58 25, 46 -18 Z" fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+      <path d="M -46 -18 C -58 25, -64 95, -52 145 C -38 135, -32 95, -28 45 L 28 45 C 32 95, 38 135, 52 145 C 64 95, 58 25, 46 -18 Z" fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   } else if (rig.hairStyle === "twin_tails") {
     backHairSvg = `
-      <path d="M -42 -22 C -78 -10, -88 65, -72 135 C -52 120, -48 65, -38 5 Z" fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
-      <path d="M 42 -22 C 78 -10, 88 65, 72 135 C 52 120, 48 65, 38 5 Z" fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+      <path d="M -42 -22 C -78 -10, -88 65, -72 135 C -52 120, -48 65, -38 5 Z" fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
+      <path d="M 42 -22 C 78 -10, 88 65, 72 135 C 52 120, 48 65, 38 5 Z" fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   } else if (rig.hairStyle === "ponytail") {
     backHairSvg = `
-      <path d="M 18 -42 C 58 -55, 78 5, 68 85 C 48 75, 42 25, 22 -15 Z" fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+      <path d="M 18 -42 C 58 -55, 78 5, 68 85 C 48 75, 42 25, 22 -15 Z" fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   } else if (rig.hairStyle === "spiky" || rig.hairStyle === "messy") {
     backHairSvg = `
-      <path d="M -42 -12 L -62 -22 L -46 2 L -56 18 L -34 16 L 34 16 L 56 18 L 46 2 L 62 -22 L 42 -12 Z" fill="${rig.hairColor}" stroke="#09090b" stroke-width="3"/>
+      <path d="M -42 -12 L -62 -22 L -46 2 L -56 18 L -34 16 L 34 16 L 56 18 L 46 2 L 62 -22 L 42 -12 Z" fill="${rig.hairColor}" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   } else if (rig.hairStyle === "hooded") {
     backHairSvg = `
-      <path d="M -64 52 C -72 -72, 72 -72, 64 52 Z" fill="${rig.outfitDark}" stroke="#09090b" stroke-width="3.5"/>
+      <path d="M -64 52 C -72 -72, 72 -72, 64 52 Z" fill="${rig.outfitDark}" stroke="${inkStroke}" stroke-width="${strokeWidth + 0.5}"/>
     `;
   }
 
   let frontHairSvg = "";
   if (rig.hairStyle === "helmet" || rig.hairStyle === "visor_helm") {
     frontHairSvg = `
-      <path d="M -46 -14 C -50 -64, 50 -64, 46 -14 L 53 -6 C 20 -14, -20 -14, -53 -6 Z" fill="#3a4736" stroke="#09090b" stroke-width="3.5"/>
-      <rect x="-6" y="-46" width="12" height="24" rx="2" fill="#e2e8f0" stroke="#09090b" stroke-width="1.5"/>
-      ${rig.hairStyle === "visor_helm" ? `<rect x="-34" y="-12" width="68" height="16" rx="4" fill="${rig.accentGlow}" opacity="0.8" stroke="#09090b" stroke-width="2.5"/>` : ""}
+      <path d="M -46 -14 C -50 -64, 50 -64, 46 -14 L 53 -6 C 20 -14, -20 -14, -53 -6 Z" fill="#3a4736" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
+      <rect x="-6" y="-46" width="12" height="24" rx="2" fill="#e2e8f0" stroke="${inkStroke}" stroke-width="1.5"/>
+      ${rig.hairStyle === "visor_helm" ? `<rect x="-34" y="-12" width="68" height="16" rx="4" fill="${rig.accentGlow}" opacity="0.8" stroke="${inkStroke}" stroke-width="2.5"/>` : ""}
     `;
   } else if (rig.hairStyle === "crown") {
     frontHairSvg = `
-      <path d="M -40 -10 C -44 -56, 44 -56, 40 -10 C 26 -14, 12 -24, 0 -18 C -12 -24, -26 -14, -40 -10 Z" fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
-      <polygon points="-32,-34 -24,-58 -10,-42 0,-64 10,-42 24,-58 32,-34" fill="#facc15" stroke="#09090b" stroke-width="2.5"/>
+      <path d="M -40 -10 C -44 -56, 44 -56, 40 -10 C 26 -14, 12 -24, 0 -18 C -12 -24, -26 -14, -40 -10 Z" fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
+      <polygon points="-32,-34 -24,-58 -10,-42 0,-64 10,-42 24,-58 32,-34" fill="#facc15" stroke="${inkStroke}" stroke-width="2.5"/>
     `;
   } else if (rig.hairStyle === "cowboy_hat") {
     frontHairSvg = `
-      <path d="M -38 -12 C -38 -48, 38 -48, 38 -12 Z" fill="#451a03" stroke="#09090b" stroke-width="3"/>
-      <ellipse cx="0" cy="-16" rx="68" ry="12" fill="#5c2406" stroke="#09090b" stroke-width="3"/>
+      <path d="M -38 -12 C -38 -48, 38 -48, 38 -12 Z" fill="#451a03" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
+      <ellipse cx="0" cy="-16" rx="68" ry="12" fill="#5c2406" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   } else if (rig.hairStyle === "spiky" || rig.hairStyle === "messy") {
     frontHairSvg = `
@@ -1705,8 +2210,8 @@ function renderCharacterLayerSvg(
                L 8 -8 L 2 -24 L -8 -6 L -16 -24
                C -24 -16, -28 -4, -32 18
                C -34 12, -36 -2, -42 -10 Z"
-            fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M -24 -42 Q 0 -54 24 -40" fill="none" stroke="${rig.hairHighlight}" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+            fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+      <path d="M -24 -42 Q 0 -54 24 -40" fill="none" stroke="${rig.hairHighlight}" stroke-width="${strokeWidth}" stroke-linecap="round" opacity="0.55"/>
     `;
   } else if (rig.hairStyle === "long" || rig.hairStyle === "twin_tails" || rig.hairStyle === "braided" || rig.hairStyle === "bob") {
     const sideLen = rig.hairStyle === "bob" ? 32 : 82;
@@ -1719,19 +2224,19 @@ function renderCharacterLayerSvg(
                C -8 -16, -18 -22, -28 -10
                C -32 14, -30 42, -36 ${sideLen}
                C -42 40, -44 18, -42 -12 Z"
-            fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M -26 -38 Q 0 -48 26 -38" fill="none" stroke="${rig.hairHighlight}" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+            fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+      <path d="M -26 -38 Q 0 -48 26 -38" fill="none" stroke="${rig.hairHighlight}" stroke-width="${strokeWidth}" stroke-linecap="round" opacity="0.65"/>
     `;
   } else {
     frontHairSvg = `
       <path d="M -40 -10 C -44 -56, 44 -56, 40 -10 C 34 -4, 32 6, 30 12 C 26 -14, 12 -24, 0 -18 C -12 -24, -26 -14, -30 12 C -32 6, -34 -4, -40 -10 Z"
-            fill="url(#hairGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+            fill="url(#hairGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
     `;
   }
 
   let accessorySvg = "";
   if (rig.accessory === "visor") {
-    accessorySvg = `<polygon points="-34,-9 34,-9 28,4 -28,4" fill="${rig.accentGlow}" opacity="0.75" stroke="#09090b" stroke-width="2.2"/>`;
+    accessorySvg = `<polygon points="-34,-9 34,-9 28,4 -28,4" fill="${rig.accentGlow}" opacity="0.75" stroke="${inkStroke}" stroke-width="2.2"/>`;
   } else if (rig.accessory === "glasses") {
     accessorySvg = `
       <g stroke="#e2e8f0" stroke-width="2" fill="#38bdf8" fill-opacity="0.2">
@@ -1742,20 +2247,20 @@ function renderCharacterLayerSvg(
     `;
   } else if (rig.accessory === "eyepatch") {
     accessorySvg = `
-      <line x1="-36" y1="-12" x2="34" y2="2" stroke="#09090b" stroke-width="2.5"/>
+      <line x1="-36" y1="-12" x2="34" y2="2" stroke="${inkStroke}" stroke-width="2.5"/>
       <ellipse cx="15" cy="-3" rx="10" ry="7" fill="#09090b"/>
     `;
   } else if (rig.accessory === "mask") {
     accessorySvg = `<polygon points="-34,6 0,2 34,6 26,34 0,42 -26,34" fill="#111827" stroke="${rig.outfitSecondary}" stroke-width="2"/>`;
   } else if (rig.accessory === "headband") {
-    accessorySvg = `<rect x="-39" y="-24" width="78" height="8" rx="2" fill="${rig.outfitSecondary}" stroke="#09090b" stroke-width="2"/>`;
+    accessorySvg = `<rect x="-39" y="-24" width="78" height="8" rx="2" fill="${rig.outfitSecondary}" stroke="${inkStroke}" stroke-width="2"/>`;
   }
 
   let foregroundActionSvg = "";
   if (pose === "pointing" || rig.propType === "holodrive") {
     foregroundActionSvg = `
-      <path d="M 42 82 L 98 36 L 80 16 L 26 62 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5" stroke-linejoin="round"/>
-      <circle cx="92" cy="24" r="11" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.8"/>
+      <path d="M 42 82 L 98 36 L 80 16 L 26 62 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="92" cy="24" r="11" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.8"/>
       <g transform="translate(94, -4)">
         <circle cx="0" cy="0" r="38" fill="#00f5d4" opacity="0.22"/>
         <ellipse cx="0" cy="12" rx="26" ry="8" fill="none" stroke="#00f5d4" stroke-width="2"/>
@@ -1764,48 +2269,84 @@ function renderCharacterLayerSvg(
     `;
   } else if (pose === "aiming" || rig.propType === "rifle") {
     foregroundActionSvg = `
-      <path d="M -32 88 L 62 68 L 62 90 L -32 110 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <path d="M -32 88 L 62 68 L 62 90 L -32 110 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
       <g transform="translate(-25, 62) rotate(-6)">
-        <rect x="0" y="0" width="145" height="12" rx="2" fill="#1e293b" stroke="#09090b" stroke-width="3"/>
-        <rect x="35" y="-9" width="44" height="8" rx="2" fill="#0f172a" stroke="#09090b" stroke-width="2"/>
-        <rect x="52" y="12" width="16" height="22" rx="2" fill="#0f172a" stroke="#09090b" stroke-width="2.5"/>
-        <circle cx="28" cy="8" r="10" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
+        <rect x="0" y="0" width="145" height="12" rx="2" fill="#1e293b" stroke="${inkStroke}" stroke-width="3"/>
+        <rect x="35" y="-9" width="44" height="8" rx="2" fill="#0f172a" stroke="${inkStroke}" stroke-width="2"/>
+        <rect x="52" y="12" width="16" height="22" rx="2" fill="#0f172a" stroke="${inkStroke}" stroke-width="2.5"/>
+        <circle cx="28" cy="8" r="10" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
       </g>
     `;
   } else if (pose === "blade_ready" || rig.propType === "katana" || rig.propType === "blade") {
     foregroundActionSvg = `
-      <path d="M 35 78 L 88 42 L 74 22 L 22 58 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
+      <path d="M 35 78 L 88 42 L 74 22 L 22 58 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
       <g transform="translate(82, 32) rotate(-32)">
-        <rect x="-8" y="-6" width="16" height="32" rx="3" fill="#1e293b" stroke="#09090b" stroke-width="2.5"/>
-        <rect x="-16" y="-10" width="32" height="6" rx="2" fill="#f59e0b" stroke="#09090b" stroke-width="2"/>
+        <rect x="-8" y="-6" width="16" height="32" rx="3" fill="#1e293b" stroke="${inkStroke}" stroke-width="2.5"/>
+        <rect x="-16" y="-10" width="32" height="6" rx="2" fill="#f59e0b" stroke="${inkStroke}" stroke-width="2"/>
         <polygon points="-5,-10 -2,-155 6,-145 5,-10" fill="#e2e8f0" stroke="${rig.accentGlow}" stroke-width="2"/>
       </g>
-      <circle cx="82" cy="32" r="10" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
+      <circle cx="82" cy="32" r="10" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
     `;
   } else if (pose === "crossed_arms") {
     foregroundActionSvg = `
-      <path d="M -52 92 L 42 108 L 42 128 L -52 112 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
-      <path d="M 52 92 L -42 108 L -42 128 L 52 112 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
-      <circle cx="-36" cy="104" r="9" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
-      <circle cx="36" cy="104" r="9" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
+      <path d="M -52 92 L 42 108 L 42 128 L -52 112 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
+      <path d="M 52 92 L -42 108 L -42 128 L 52 112 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
+      <circle cx="-36" cy="104" r="9" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
+      <circle cx="36" cy="104" r="9" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
     `;
   } else if (pose === "thumbs_up") {
     foregroundActionSvg = `
-      <path d="M 38 92 L 84 52 L 68 36 L 24 76 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
-      <circle cx="78" cy="44" r="11" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
-      <rect x="74" y="22" width="8" height="16" rx="4" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.2"/>
+      <path d="M 38 92 L 84 52 L 68 36 L 24 76 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
+      <circle cx="78" cy="44" r="11" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
+      <rect x="74" y="22" width="8" height="16" rx="4" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.2"/>
     `;
   } else if (pose === "thinking") {
     foregroundActionSvg = `
-      <path d="M 34 105 L 14 38 L -2 42 L 16 108 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5"/>
-      <circle cx="6" cy="36" r="9.5" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.5"/>
+      <path d="M 34 105 L 14 38 L -2 42 L 16 108 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5"/>
+      <circle cx="6" cy="36" r="9.5" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="2.5"/>
     `;
   } else if (pose === "action" || rig.propType === "energy_orb") {
     foregroundActionSvg = `
-      <path d="M 38 72 L 114 12 L 96 -8 L 22 52 Z" fill="url(#coatGrad_${uid})" stroke="#09090b" stroke-width="3.5" stroke-linejoin="round"/>
-      <circle cx="108" cy="0" r="13" fill="${rig.skinColor}" stroke="#09090b" stroke-width="3"/>
+      <path d="M 38 72 L 114 12 L 96 -8 L 22 52 Z" fill="url(#coatGrad_${uid})" stroke="${inkStroke}" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="108" cy="0" r="13" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="3"/>
       <circle cx="108" cy="0" r="34" fill="${rig.accentGlow}" opacity="0.38"/>
       <polyline points="108,0 135,-24 118,-38 152,-62" fill="none" stroke="#e0f2fe" stroke-width="3.5"/>
+    `;
+  }
+
+  let styleAccentsSvg = "";
+  if (style === "manga_anime") {
+    styleAccentsSvg = `
+      <!-- Anime Angel-Ring Hair Sheen Band -->
+      <ellipse cx="0" cy="-38" rx="26" ry="3.5" fill="#ffffff" opacity="0.6"/>
+      <!-- Screentone Shadow on Neck -->
+      <polygon points="-14,24 14,24 18,52 -18,52" fill="url(#screentone_${uid})" opacity="0.6"/>
+    `;
+  } else if (style === "cyberpunk_neon") {
+    styleAccentsSvg = `
+      <!-- Dual Neon Rim Lighting (Cyan on left, Magenta on right) -->
+      <path d="M -38 -16 C -40 4, -30 22, -16 34 L -24 58 L -72 245" fill="none" stroke="#00f5d4" stroke-width="2.5" opacity="0.85"/>
+      <path d="M 38 -16 C 40 4, 30 22, 16 34 L 24 58 L 72 245" fill="none" stroke="#f72585" stroke-width="2.5" opacity="0.85"/>
+    `;
+  } else if (style === "gritty_graphic_novel") {
+    styleAccentsSvg = `
+      <!-- Heavy Solid Black Shadow Polygon & Ink Crosshatching -->
+      <polygon points="-16,22 16,22 20,38 0,44 -20,38" fill="#000000"/>
+      <g stroke="#000000" stroke-width="1.2" opacity="0.6">
+        <line x1="12" y1="6" x2="26" y2="20"/>
+        <line x1="18" y1="4" x2="30" y2="16"/>
+        <line x1="24" y1="2" x2="34" y2="12"/>
+      </g>
+    `;
+  } else if (style === "retro_comic") {
+    styleAccentsSvg = `
+      <!-- Pop-Art Ben-Day Dot Shading on Neck and Face -->
+      <polygon points="6,-10 26,-10 24,32 6,36" fill="url(#bendedDots_${uid})" opacity="0.7"/>
+    `;
+  } else if (style === "film_noir") {
+    styleAccentsSvg = `
+      <!-- Dramatic Venetian Blind Shadow Slits -->
+      <rect x="-42" y="-48" width="84" height="290" fill="url(#venetian_${uid})"/>
     `;
   }
 
@@ -1827,6 +2368,11 @@ function renderCharacterLayerSvg(
           <stop offset="65%" stop-color="${rig.outfitDark}"/>
           <stop offset="100%" stop-color="#05070c"/>
         </linearGradient>
+        <linearGradient id="eyeGrad_${uid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+          <stop offset="35%" stop-color="${rig.eyeColor}"/>
+          <stop offset="100%" stop-color="#05070c"/>
+        </linearGradient>
       </defs>
 
       <ellipse cx="0" cy="-135" rx="92" ry="155" fill="${rig.accentGlow}" opacity="0.14"/>
@@ -1835,22 +2381,43 @@ function renderCharacterLayerSvg(
         ${rig.customBackSvg || ""}
         ${backHairSvg}
 
-        ${renderOutfitSvg(rig, uid)}
+        ${renderOutfitSvg(rig, uid, style)}
 
-        <path d="M -16 20 Q -16 44 -24 58 L 24 58 Q 16 44 16 20 Z" fill="url(#skinGrad_${uid})" stroke="#09090b" stroke-width="3"/>
+        <path d="M -16 20 Q -16 44 -24 58 L 24 58 Q 16 44 16 20 Z" fill="url(#skinGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}"/>
         <path d="M -15 22 Q 0 42 15 22 L 15 34 Q 0 48 -15 34 Z" fill="#09090b" opacity="0.38"/>
 
-        <path d="M -37 -8 C -45 -8, -45 12, -35 14" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.8"/>
-        <path d="M 37 -8 C 45 -8, 45 12, 35 14" fill="${rig.skinColor}" stroke="#09090b" stroke-width="2.8"/>
+        <path d="M -37 -8 C -45 -8, -45 12, -35 14" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="${Math.max(2, strokeWidth - 0.5)}"/>
+        <path d="M 37 -8 C 45 -8, 45 12, 35 14" fill="${rig.skinColor}" stroke="${inkStroke}" stroke-width="${Math.max(2, strokeWidth - 0.5)}"/>
 
-        <path d="M -38 -16
-                 C -40 -52, 40 -52, 38 -16
-                 C 38 4, 30 22, 16 34
-                 C 6 42, -6 42, -16 34
-                 C -30 22, -38 4, -38 -16 Z"
-              fill="url(#skinGrad_${uid})" stroke="#09090b" stroke-width="3.5" stroke-linejoin="round"/>
+        ${
+          style === "manga_anime"
+            ? `<!-- Sharp Tapered Manga / Anime Jaw -->
+               <path d="M -35 -16 C -37 -50, 37 -50, 35 -16 C 35 6, 22 24, 0 39 C -22 24, -35 6, -35 -16 Z" fill="url(#skinGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+               <ellipse cx="0" cy="-38" rx="26" ry="5" fill="#ffffff" opacity="0.6"/>`
+            : style === "watercolor_storyboard"
+            ? `<!-- Soft Storybook Watercolor Jaw & Rosy Cheek Wash -->
+               <path d="M -37 -16 C -39 -50, 39 -50, 37 -16 C 37 4, 28 22, 14 34 C 4 41, -4 41, -14 34 C -28 22, -37 4, -37 -16 Z" fill="url(#skinGrad_${uid})" stroke="${inkStroke}" stroke-width="2" stroke-linejoin="round"/>
+               <ellipse cx="-18" cy="11" rx="10" ry="4.5" fill="#f43f5e" opacity="0.25"/>
+               <ellipse cx="18" cy="11" rx="10" ry="4.5" fill="#f43f5e" opacity="0.25"/>`
+            : style === "cyberpunk_neon"
+            ? `<!-- Cybernetic Jaw & Glowing Neural Circuit Seams -->
+               <path d="M -37 -16 C -39 -50, 39 -50, 37 -16 C 37 4, 28 20, 16 34 C 6 42, -6 42, -16 34 C -28 20, -37 4, -37 -16 Z" fill="url(#skinGrad_${uid})" stroke="${inkStroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
+               <path d="M 27 -2 L 34 3 L 34 16" fill="none" stroke="#00f5d4" stroke-width="1.8" stroke-linecap="round" opacity="0.9"/>
+               <path d="M -27 -2 L -34 3 L -34 16" fill="none" stroke="#f72585" stroke-width="1.8" stroke-linecap="round" opacity="0.9"/>`
+            : style === "retro_comic"
+            ? `<!-- Bold 1960s Pop-Art Comic Jaw & Solid Black Cheek Wedge -->
+               <path d="M -38 -16 C -40 -52, 40 -52, 38 -16 C 38 4, 30 22, 16 34 C 6 42, -6 42, -16 34 C -30 22, -38 4, -38 -16 Z" fill="url(#skinGrad_${uid})" stroke="#000000" stroke-width="4" stroke-linejoin="round"/>
+               <path d="M 16 4 C 28 12, 28 26, 12 36 L 16 34 C 28 22, 36 6, 36 -12 Z" fill="#000000" opacity="0.45"/>`
+            : style === "film_noir"
+            ? `<!-- Film Noir Stark Chiaroscuro Half-Face Shadow Mask -->
+               <path d="M -38 -16 C -40 -52, 40 -52, 38 -16 C 38 4, 30 22, 16 34 C 6 42, -6 42, -16 34 C -30 22, -38 4, -38 -16 Z" fill="url(#skinGrad_${uid})" stroke="#000000" stroke-width="3" stroke-linejoin="round"/>
+               <polygon points="0,-48 38,-28 35,22 14,35 0,40" fill="#000000" opacity="0.6"/>`
+            : `<!-- Gritty Graphic Novel Jaw & Shadow -->
+               <path d="M -38 -16 C -40 -52, 40 -52, 38 -16 C 38 4, 30 22, 16 34 C 6 42, -6 42, -16 34 C -30 22, -38 4, -38 -16 Z" fill="url(#skinGrad_${uid})" stroke="#000000" stroke-width="3.5" stroke-linejoin="round"/>
+               <path d="M 18 -6 C 32 4, 26 22, 8 36 C 24 26, 35 10, 35 -6 Z" fill="${rig.skinShadow}" opacity="0.55"/>`
+        }
 
-        <path d="M 18 -6 C 32 4, 26 22, 8 36 C 24 26, 35 10, 35 -6 Z" fill="${rig.skinShadow}" opacity="0.55"/>
+        ${styleAccentsSvg}
 
         ${
           rig.hasScar
@@ -1865,31 +2432,20 @@ function renderCharacterLayerSvg(
             : ""
         }
 
-        <g>
-          <path d="M -26 -3 Q -16 -10 -6 -2 Q -16 4 -26 -3 Z" fill="#ffffff" stroke="#09090b" stroke-width="2"/>
-          <circle cx="-15" cy="-3" r="5" fill="${rig.eyeColor}"/>
-          <circle cx="-15" cy="-3" r="2.3" fill="#09090b"/>
-          <circle cx="-17" cy="-5" r="1.6" fill="#ffffff"/>
-          <circle cx="-13.5" cy="-1.5" r="0.9" fill="#ffffff"/>
-          <path d="M -27 -4 Q -16 -11 -5 -2" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round"/>
+        ${renderStyleEyesSvg(style, uid, rig, expression, browTilt, inkStroke)}
 
-          ${
-            expression === "wink"
-              ? `<path d="M 6 -2 Q 16 -9 26 -2" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round"/>`
-              : `<path d="M 6 -2 Q 16 -10 26 -3 Q 16 4 6 -2 Z" fill="#ffffff" stroke="#09090b" stroke-width="2"/>
-                 <circle cx="15" cy="-3" r="5" fill="${rig.eyeColor}"/>
-                 <circle cx="15" cy="-3" r="2.3" fill="#09090b"/>
-                 <circle cx="13" cy="-5" r="1.6" fill="#ffffff"/>
-                 <circle cx="16.5" cy="-1.5" r="0.9" fill="#ffffff"/>
-                 <path d="M 5 -2 Q 16 -11 27 -4" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round"/>`
-          }
-
-          <path d="M -28 ${-13 - browTilt} Q -16 -16 -5 ${-12 + browTilt}" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round"/>
-          <path d="M 28 ${-13 - browTilt} Q 16 -16 5 ${-12 + browTilt}" fill="none" stroke="#09090b" stroke-width="3.5" stroke-linecap="round"/>
-        </g>
-
-        <polygon points="0,-2 -4,13 0,15" fill="${rig.skinShadow}"/>
-        <path d="M -1 0 L -4 13 L 2 14" fill="none" stroke="#09090b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        ${
+          style === "manga_anime"
+            ? `<circle cx="0" cy="8" r="1.6" fill="${inkStroke}"/>`
+            : style === "watercolor_storyboard"
+            ? `<path d="M -1 2 L -3 12 L 2 13" fill="none" stroke="${inkStroke}" stroke-width="1.8" stroke-linecap="round"/>`
+            : style === "film_noir"
+            ? `<line x1="0" y1="1" x2="-4" y2="14" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>`
+            : style === "retro_comic"
+            ? `<path d="M -2 0 L -5 13 L 2 14" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`
+            : `<polygon points="0,-2 -4,13 0,15" fill="${rig.skinShadow}"/>
+               <path d="M -1 0 L -4 13 L 2 14" fill="none" stroke="${inkStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`
+        }
 
         ${mouthSvg}
         ${accessorySvg}
@@ -2038,13 +2594,18 @@ export function composeLayeredSceneDataUri(
     variationSeed
   );
 
+  const style = resolveStyleArchetype(styleBible.artStyle);
+  const styleDefs = generateStyleDefsSvg(style, `scene_${sequenceIndex}_${variationSeed}`);
+  const styleOverlay = renderStyleForegroundOverlay(style);
+
   const bgSvg = renderBackgroundLayerSvg(
     parsed.background,
     styleBible.colorPalette,
     parsed.lighting,
     variationSeed,
     editDirective,
-    beatDescription
+    beatDescription,
+    styleBible.artStyle
   );
 
   const bgVfxSvg = renderAtmosphericBackVfxSvg(
@@ -2061,7 +2622,8 @@ export function composeLayeredSceneDataUri(
         p.expression,
         p.slotIndex,
         p.totalInScene,
-        parsed.camera
+        parsed.camera,
+        styleBible.artStyle
       )
     )
     .join("\n");
@@ -2072,16 +2634,20 @@ export function composeLayeredSceneDataUri(
   );
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 576" width="1024" height="576">
+    <defs>
+      ${styleDefs}
+    </defs>
     ${bgSvg}
     ${bgVfxSvg}
     ${charsSvg}
     ${fgWeatherSvg}
+    ${styleOverlay}
     <rect width="1024" height="576" fill="none" stroke="#09090b" stroke-width="14"/>
   </svg>`;
 
   const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   const charList = parsed.charPlacements.map((p) => `${p.character.name} (${p.pose}, ${p.expression})`).join(", ");
-  const summary = `Background: ${parsed.background.name} | Cast: ${charList || "None"} | Camera: ${parsed.camera} | Weather: ${parsed.weather}${parsed.vfx.length ? ` | VFX: ${parsed.vfx.join(", ")}` : ""}`;
+  const summary = `Style: ${styleBible.artStyle} | Background: ${parsed.background.name} | Cast: ${charList || "None"} | Camera: ${parsed.camera} | Weather: ${parsed.weather}${parsed.vfx.length ? ` | VFX: ${parsed.vfx.join(", ")}` : ""}`;
 
   return {
     imageUrl: dataUri,
@@ -2102,18 +2668,70 @@ export function renderCharacterPortraitDataUri(
     "determined",
     0,
     1,
-    "closeup"
+    "closeup",
+    artStyle
   );
+
+  const style = resolveStyleArchetype(artStyle);
+  const styleDefs = generateStyleDefsSvg(style, "port");
+
+  let backdropSvg = `<rect x="256" y="60" width="512" height="512" fill="#070a12"/>`;
+  if (style === "manga_anime") {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#180b2b"/>
+      <circle cx="512" cy="280" r="220" fill="#2e1065" opacity="0.8"/>
+      <circle cx="512" cy="280" r="160" fill="#38bdf8" opacity="0.22"/>
+      <g stroke="#ffffff" stroke-width="1.2" opacity="0.25">
+        <line x1="512" y1="280" x2="256" y2="60"/>
+        <line x1="512" y1="280" x2="768" y2="60"/>
+        <line x1="512" y1="280" x2="256" y2="500"/>
+        <line x1="512" y1="280" x2="768" y2="500"/>
+      </g>
+    `;
+  } else if (style === "watercolor_storyboard") {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#faf5eb"/>
+      <circle cx="512" cy="270" r="210" fill="#fde047" opacity="0.35"/>
+      <circle cx="512" cy="270" r="150" fill="#fb923c" opacity="0.25"/>
+      <ellipse cx="512" cy="320" rx="230" ry="140" fill="#f472b6" opacity="0.18"/>
+    `;
+  } else if (style === "cyberpunk_neon") {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#050711"/>
+      <circle cx="512" cy="270" r="190" fill="#0f084b" opacity="0.8"/>
+      <circle cx="512" cy="270" r="140" fill="none" stroke="#00f5d4" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+      <circle cx="512" cy="270" r="180" fill="none" stroke="#f72585" stroke-width="2" stroke-dasharray="12 6" opacity="0.4"/>
+      <rect x="256" y="60" width="512" height="512" fill="url(#cyberGrid_port)"/>
+    `;
+  } else if (style === "retro_comic") {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#faf5eb"/>
+      <rect x="256" y="60" width="512" height="512" fill="url(#bendedDots_port)"/>
+      <circle cx="512" cy="270" r="180" fill="#fde047" stroke="#000000" stroke-width="4"/>
+    `;
+  } else if (style === "film_noir") {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#000000"/>
+      <polygon points="680,60 340,572 560,572 768,60" fill="#ffffff" opacity="0.16"/>
+      <rect x="256" y="60" width="512" height="512" fill="url(#venetian_port)"/>
+    `;
+  } else {
+    backdropSvg = `
+      <rect x="256" y="60" width="512" height="512" fill="#090d16"/>
+      <rect x="256" y="60" width="512" height="512" fill="url(#crosshatch_port)"/>
+      <circle cx="512" cy="280" r="190" fill="${rig.accentGlow}" opacity="0.22"/>
+    `;
+  }
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="256 60 512 512" width="512" height="512">
     <defs>
+      ${styleDefs}
       <radialGradient id="portGlow" cx="50%" cy="45%" r="55%">
         <stop offset="0%" stop-color="${rig.accentGlow}" stop-opacity="0.38"/>
         <stop offset="100%" stop-color="#070a12" stop-opacity="1"/>
       </radialGradient>
     </defs>
-    <rect x="256" y="60" width="512" height="512" fill="#070a12"/>
-    <rect x="256" y="60" width="512" height="512" fill="url(#portGlow)"/>
+    ${backdropSvg}
     ${charSvg}
   </svg>`;
 
